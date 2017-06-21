@@ -1,5 +1,4 @@
 sra <- read.delim("../extdata/SraRunTable.txt")
-prefix <- "ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR156/006"
 run <- as.character(sra$Run_s)
 accession2url <- function(x) {
   prefix <- "ftp://ftp.sra.ebi.ac.uk/vol1/fastq"
@@ -13,5 +12,6 @@ accession2url <- function(x) {
 
 read1 <- file.path(accession2url(run),paste0(run,"_1.fastq.gz"))
 read2 <- file.path(accession2url(run),paste0(run,"_2.fastq.gz"))
+write(run, "../extdata/srr")
 write(read1, "../extdata/read1")
 write(read2, "../extdata/read2")

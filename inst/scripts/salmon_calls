@@ -1,0 +1,4 @@
+# indexing
+./Salmon-0.8.2_linux_x86_64/bin/salmon index -t gencode.v26.transcripts.fa.gz -i gencode.v26.Salmon-0.8.2_index --gencode
+
+# quantifying

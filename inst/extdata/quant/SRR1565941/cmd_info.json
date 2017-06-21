@@ -1,0 +1,9 @@
+{
+    "salmon_version": "0.8.2",
+    "index": "gencode.v26.Salmon-0.8.2_index",
+    "libType": "IU",
+    "mates1": "fastq/SRR1565941_1.fastq.gz",
+    "mates2": "fastq/SRR1565941_2.fastq.gz",
+    "output": "quant/SRR1565941",
+    "auxDir": "aux_info"
+}

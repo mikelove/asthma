@@ -10,6 +10,7 @@ opts_chunk$set(cache=TRUE)
 ```
 
 ```{r}
+library(rjson)
 library(tximport)
 library(readr)
 coldata <- read_delim("../data/SraRunTable.txt", delim="\t")
@@ -39,11 +40,11 @@ load("../data/tx2gene.rda")
 txi <- tximport(files[1], type="salmon", tx2gene=tx2gene)
 ```
 
-```{r}
+```{r message=FALSE}
 txi <- tximport(files, type="salmon", tx2gene=tx2gene)
 ```
 
-```{r results="hide"}
+```{r message=FALSE}
 library(DESeq2)
 ```
 
@@ -108,7 +109,7 @@ rownames(dds) <- make.unique(substr(rownames(dds),1,15))
 
 ```{r}
 dds <- dds[rowSums(counts(dds)) > 0,]
-keep <- rowSums(counts(dds) >= 5) >= 3
+keep <- rowSums(counts(dds) >= 10) >= 3
 table(keep)
 dds <- dds[keep,]
 ```
@@ -165,7 +166,7 @@ dat <- plotCounts(dds, target.map[2], c("condition","treatment","id.nested"),
                   returnData=TRUE)
 ```
 
-```{r targets2}
+```{r targets2, message=FALSE}
 library(ggplot2)
 ggplot(dat, aes(x=treatment, y=count, col=id.nested, group=id.nested)) +
   geom_point() + geom_smooth(method="lm") +
@@ -203,7 +204,7 @@ sim <- makeExampleDESeqDataSet(n=10000, m=12,
                                interceptMean=4.80,
                                interceptSD=1.66,
                                dispMeanRel=dmr)
-keep <- rowSums(counts(sim) >= 5) >= 3
+keep <- rowSums(counts(sim) >= 10) >= 3
 table(keep)
 sim <- sim[keep,]
 sim <- DESeq(sim)
@@ -220,12 +221,14 @@ plotMA(sim.res, xlim=c(1,1e6), ylim=c(-5,5))
 sim.dat <- data.frame(sig=sim.res$padj < .1,
                       logmean=cut(mcols(sim)$trueIntercept,c(-1,3.3,6.6,10,20)),
                       abs.lfc=cut(abs(mcols(sim)$trueBeta),c(0,.25,.5,1,3)))
+```
+
+```{r message=FALSE}
 library(dplyr) 
 sim.tab <- sim.dat %>% group_by(logmean, abs.lfc) %>% summarize(power=mean(sig))
 ```
 
 ```{r power}
-library(ggplot2)
 ggplot(sim.tab, aes(x=abs.lfc, y=power, col=logmean, group=logmean)) + geom_line()
 ```
 
@@ -238,14 +241,14 @@ hist(2^rnorm(1000,mean=7,sd=2))
 ```{r}
 set.seed(1)
 sim2 <- makeExampleDESeqDataSet(n=10000, m=12,
-                                betaSD=ifelse(de, 0.5, 0),
+                                betaSD=ifelse(de,1,0),
                                 interceptMean=6,
                                 interceptSD=3,
                                 dispMeanRel=dmr)
 sim2 <- DESeq(sim2)
-sim2.res <- results(sim2)
 thresh <- c(1,5,10,15,20)/100
 fdr <- sapply(thresh, function(t) {
+  sim2.res <- results(sim2, alpha=t)
   sig <- which(sim2.res$padj < t)
   mean(!de[sig])
 })

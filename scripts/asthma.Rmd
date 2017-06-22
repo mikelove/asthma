@@ -27,7 +27,7 @@ saveDb(txdb, file="gencode.v26.sqlite")
 # txdb <- loadDb("gencode.v26.sqlite") 
 columns(txdb)
 k <- keys(txdb, "GENEID")
-res <- select(txdb, k, "TXNAME", "GENEID")
+res <- AnnotationDbi::select(txdb, k, "TXNAME", "GENEID")
 tx2gene <- res[,2:1]
 ```
 	
@@ -108,7 +108,7 @@ rownames(dds) <- make.unique(substr(rownames(dds),1,15))
 
 ```{r}
 dds <- dds[rowSums(counts(dds)) > 0,]
-keep <- rowSums(counts(dds) >= 10) >= 3
+keep <- rowSums(counts(dds) >= 5) >= 3
 table(keep)
 dds <- dds[keep,]
 ```
@@ -143,8 +143,8 @@ plotCounts(dds, top.gene, c("condition","treatment"), transform=FALSE)
 ```{r}
 library(Homo.sapiens)
 Homo.sapiens %>% mapIds(top.gene, "SYMBOL", "ENSEMBL")
-go.tab <- Homo.sapiens %>% select(top.gene, "GOID", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
-# Homo.sapiens %>% select(go.tab$GOID, "TERM", "GOID")
+go.tab <- Homo.sapiens %>% AnnotationDbi::select(top.gene, "GOID", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
+# Homo.sapiens %>% AnnotationDbi::select(go.tab$GOID, "TERM", "GOID")
 ```
 
 ```{r}
@@ -203,7 +203,7 @@ sim <- makeExampleDESeqDataSet(n=10000, m=12,
                                interceptMean=4.80,
                                interceptSD=1.66,
                                dispMeanRel=dmr)
-keep <- rowSums(counts(sim) >= 10) >= 3
+keep <- rowSums(counts(sim) >= 5) >= 3
 table(keep)
 sim <- sim[keep,]
 sim <- DESeq(sim)
@@ -281,18 +281,18 @@ Homo.sapiens %>% mapIds(rownames(res2.sort)[1:40],
 
 ```{r}
 match(target.map, rownames(res2.sort))
-go.tab <- Homo.sapiens %>% select(rownames(res2.sort)[1],
+go.tab <- Homo.sapiens %>% AnnotationDbi::select(rownames(res2.sort)[1],
                                   "GO", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
 ```
 
 ```{r}
 library(GO.db)
-go.tab2 <- GO.db %>% select(go.tab$GO, "TERM", "GOID")
+go.tab2 <- GO.db %>% AnnotationDbi::select(go.tab$GO, "TERM", "GOID")
 substr(go.tab2$TERM, 1, 60)
 getTerms <- function(n) {
-  go.tab <- Homo.sapiens %>% select(rownames(res2.sort)[n],
+  go.tab <- Homo.sapiens %>% AnnotationDbi::select(rownames(res2.sort)[n],
                                     "GO", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
-  go.tab2 <- Homo.sapiens %>% select(go.tab$GO, "TERM", "GOID")
+  go.tab2 <- Homo.sapiens %>% AnnotationDbi::select(go.tab$GO, "TERM", "GOID")
   substr(go.tab2$TERM, 1, 60)
 }
 ```
@@ -321,8 +321,9 @@ res3shr <- lfcShrink(dds3, coef=3, res=res3)
 
 ```{r plotma3}
 par(mfrow=c(1,2))
-plotMA(res3, ylim=c(-15,15))
+plotMA(res3, ylim=c(-12,12))
 rs <- rowSums(counts(dds)[,dds$treatment == "Vehicle"])
 with(res3[rs < 12,], points(baseMean, log2FoldChange, cex=2, col="dodgerblue"))
-plotMA(res3shr, ylim=c(-15,15))
+plotMA(res3shr, ylim=c(-12,12))
+with(res3shr[rs < 12,], points(baseMean, log2FoldChange, cex=2, col="dodgerblue"))
 ```

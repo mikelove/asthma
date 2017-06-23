@@ -2,12 +2,18 @@
 title: Exploratory and statistical analysis of RNA-seq data using DESeq2
 author: Michael Love
 date: June 2017
+output:
+  html_document:
+    toc: true
+    toc_float: true
 ---
 
 ```{r echo=FALSE}
 library(knitr)
 opts_chunk$set(cache=TRUE, fig.width=5, fig.height=5)
 ```
+
+# Importing Salmon quant files
 
 ```{r}
 library(rjson)
@@ -17,7 +23,6 @@ coldata <- read_delim("../data/SraRunTable.txt", delim="\t")
 files <- file.path("../data/quant",coldata$Run_s,"quant.sf.gz")
 names(files) <- coldata$Run_s
 ```
-
 
 ```{r eval=FALSE}
 # ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_26/gencode.v26.annotation.gtf.gz
@@ -48,6 +53,8 @@ txi <- tximport(files, type="salmon", tx2gene=tx2gene)
 library(DESeq2)
 ```
 
+# Assembling the sample info
+
 ```{r}
 geo <- read_delim("../data/GEO_table.txt", delim="\t", col_names=FALSE)
 coldata$title <- geo$X2[match(coldata$Sample_Name_s, geo$X1)]
@@ -68,13 +75,17 @@ dds$condition %<>% relevel("non")
 dds$treatment %<>% relevel("Vehicle")
 ```
 
+# Exploratory data analysis
+
 ```{r}
 vsd <- vst(dds, blind=FALSE)
 ```
 
-```{r pca}
+```{r pca, fig.width=7, fig.height=4}
 plotPCA(vsd, c("treatment","condition"))
 ```
+
+# Re-arrange sample info
 
 ```{r}
 dds$id <- substr(dds$title, 1, 3)
@@ -107,6 +118,8 @@ design(dds) <- ~condition + condition:id.nested +
 ```{r}
 rownames(dds) <- make.unique(substr(rownames(dds),1,15))
 ```
+
+# Differential gene expression
 
 ```{r}
 dds <- dds[rowSums(counts(dds)) > 0,]
@@ -142,6 +155,8 @@ top.gene <- rownames(res.sort)[1]
 plotCounts(dds, top.gene, c("condition","treatment"), transform=FALSE)
 ```
 
+# Exploring results
+
 ```{r}
 library(Homo.sapiens)
 Homo.sapiens %>% mapIds(top.gene, "SYMBOL", "ENSEMBL")
@@ -157,7 +172,6 @@ match(target.map, rownames(res.sort))
 ```
 
 ```{r targets}
-par(mfrow=c(2,1))
 plotCounts(dds, target.map[2], c("condition","treatment"))
 plotCounts(dds, target.map[2], c("condition","treatment"), transform=FALSE)
 ```
@@ -167,7 +181,7 @@ dat <- plotCounts(dds, target.map[2], c("condition","treatment","id.nested"),
                   returnData=TRUE)
 ```
 
-```{r targets2, message=FALSE}
+```{r targets2, warning=FALSE, fig.width=7, fig.height=4}
 library(ggplot2)
 ggplot(dat, aes(x=treatment, y=count, col=id.nested, group=id.nested)) +
   geom_point() + geom_smooth(method="lm") +
@@ -175,8 +189,10 @@ ggplot(dat, aes(x=treatment, y=count, col=id.nested, group=id.nested)) +
   facet_wrap(~condition)
 ```
 
+# Interlude: power analysis
+
 ```{r plotdisp}
-plotDispEsts(dds)
+plotDispEsts(dds, ylim=c(1e-4,10))
 ```
 
 ```{r}
@@ -186,7 +202,7 @@ baseMean <- mcols(dds)$baseMean
 ```
 
 ```{r simdisp}
-plot(baseMean, dmr(baseMean), log="xy", ylim=c(1e-8,10))
+plot(baseMean, dmr(baseMean), log="xy", ylim=c(1e-4,10))
 ```
 
 ```{r}
@@ -208,7 +224,7 @@ sim <- DESeq(sim)
 sim.res <- results(sim, independentFiltering=FALSE, cooksCutoff=FALSE)
 ```
 
-```{r compma}
+```{r compma, fig.width=8, fig.height=5}
 par(mfrow=c(1,2))
 plotMA(res, xlim=c(1,1e6), ylim=c(-5,5))
 plotMA(sim.res, xlim=c(1,1e6), ylim=c(-5,5))
@@ -230,13 +246,10 @@ sim.tab <- sim.dat %>% group_by(log2mean, abs.lfc) %>% summarize(power=mean(sig)
 ggplot(sim.tab, aes(x=abs.lfc, y=power, col=log2mean, group=log2mean)) + geom_line()
 ```
 
-```{r histmean2}
-par(mfrow=c(1,1))
-de <- rep(c(FALSE,TRUE),c(8000,2000))
-hist(2^rnorm(1000,mean=7,sd=2))
-```
+# Empirical and nominal FDR
 
 ```{r}
+de <- rep(c(FALSE,TRUE),c(8000,2000))
 set.seed(1)
 sim2 <- makeExampleDESeqDataSet(n=10000, m=12,
                                 betaSD=ifelse(de,1,0),
@@ -244,8 +257,8 @@ sim2 <- makeExampleDESeqDataSet(n=10000, m=12,
                                 interceptSD=3,
                                 dispMeanRel=dmr)
 sim2 <- DESeq(sim2)
-thresh <- c(1,5,10,15,20)/100
-fdr <- sapply(thresh, function(t) {
+threshold <- c(1,5,10,15,20)/100
+FDR <- sapply(threshold, function(t) {
   sim2.res <- results(sim2, alpha=t)
   sig <- which(sim2.res$padj < t)
   mean(!de[sig])
@@ -253,9 +266,12 @@ fdr <- sapply(thresh, function(t) {
 ```
 
 ```{r simfdr}
-plot(thresh, fdr, ylim=c(0,.3), type="b", col="blue")
+plot(threshold, FDR, ylim=c(0,.3), type="b", col="blue",
+     main="Empirical vs nominal FDR")
 abline(0,1)
 ```
+
+# Other differential analyses
 
 ```{r}
 dds2 <- removeResults(dds)
@@ -279,6 +295,8 @@ res2.sort <- res2[order(res2$log2FoldChange, decreasing=TRUE),]
 Homo.sapiens %>% mapIds(rownames(res2.sort)[1:40],
                         "SYMBOL", "ENSEMBL")
 ```
+
+# Exploring results with annotation
 
 ```{r}
 match(target.map, rownames(res2.sort))
@@ -308,6 +326,8 @@ getTerms(7)
 getTerms(8)
 ```
 
+# LFC shrinkage
+
 ```{r}
 dds3 <- removeResults(dds)
 design(dds3) <- ~condition + treatment
@@ -320,11 +340,15 @@ res3 <- results(dds3, lfcThreshold=2)
 res3shr <- lfcShrink(dds3, coef=3, res=res3)
 ```
 
-```{r plotma3}
+```{r plotma3, fig.width=8, fig.height=5}
 par(mfrow=c(1,2))
 plotMA(res3, ylim=c(-12,12))
 rs <- rowSums(counts(dds)[,dds$treatment == "Vehicle"])
 with(res3[rs < 12,], points(baseMean, log2FoldChange, cex=2, col="dodgerblue"))
 plotMA(res3shr, ylim=c(-12,12))
 with(res3shr[rs < 12,], points(baseMean, log2FoldChange, cex=2, col="dodgerblue"))
+```
+
+```{r}
+sessionInfo()
 ```

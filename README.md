@@ -1,14 +1,18 @@
 # asthma
 
-RNA-seq quantifications: gene expression responses to human rhinovirus infection for 6 asthmatic and 6 non-asthmatic donors (SRP046226)
+Example DESeq2 script is [here](https://github.com/mikelove/asthma/blob/master/scripts/asthma.knit.md)
+
+RNA-seq quantifications from: gene expression responses to human rhinovirus infection for 6 asthmatic and 6 non-asthmatic donors (SRP046226)
 
 [Bai J et al.](https://www.ncbi.nlm.nih.gov/pubmed/25706956), "Phenotypic responses of differentiated asthmatic human airway epithelial cultures to rhinovirus.", PLoS One, 2015 Feb 23;10(2):e0118286
 
-PLoS One. 2015 Feb 23;10(2):e0118286. doi: 10.1371/journal.pone.0118286. eCollection 2015.
+doi: [10.1371/journal.pone.0118286](http://dx.doi.org/10.1371/journal.pone.0118286)
 
-Phenotypic responses of differentiated asthmatic human airway epithelial cultures to rhinovirus.
+**Phenotypic responses of differentiated asthmatic human airway epithelial cultures to rhinovirus.**
 
 Bai J, Smock SL, Jackson GR Jr, MacIsaac KD, Huang Y, Mankus C, Oldach J, Roberts B, Ma YL, Klappenbach JA, Crackower MA, Alves SE, Hayden PJ.
+
+---
 
 Abstract
 

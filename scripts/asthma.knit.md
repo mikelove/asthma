@@ -373,41 +373,6 @@ plotCounts(dds, top.gene, c("condition","treatment"), transform=FALSE)
 
 ```r
 library(Homo.sapiens)
-```
-
-```
-## Loading required package: AnnotationDbi
-```
-
-```
-## Loading required package: OrganismDbi
-```
-
-```
-## Loading required package: GenomicFeatures
-```
-
-```
-## Loading required package: GO.db
-```
-
-```
-## 
-```
-
-```
-## Loading required package: org.Hs.eg.db
-```
-
-```
-## 
-```
-
-```
-## Loading required package: TxDb.Hsapiens.UCSC.hg19.knownGene
-```
-
-```r
 Homo.sapiens %>% mapIds(top.gene, "SYMBOL", "ENSEMBL")
 ```
 
@@ -484,7 +449,7 @@ dat <- plotCounts(dds, target.map[2], c("condition","treatment","id.nested"),
 ```r
 library(ggplot2)
 ggplot(dat, aes(x=treatment, y=count, col=id.nested, group=id.nested)) +
-  geom_point() + geom_smooth(method="lm") +
+  geom_point() + geom_smooth(method="lm", se=FALSE) +
   scale_y_log10() + 
   facet_wrap(~condition)
 ```
@@ -508,8 +473,8 @@ dispersionFunction(dds)
 ```
 ## function (q) 
 ## coefs[1] + coefs[2]/q
-## <bytecode: 0x55f1894c5c68>
-## <environment: 0x55f18a035c88>
+## <bytecode: 0x125038958>
+## <environment: 0x1254a0588>
 ## attr(,"coefficients")
 ## asymptDisp  extraPois 
 ## 0.05393587 2.06449016 
@@ -1191,90 +1156,83 @@ sessionInfo()
 
 ```
 ## R version 3.4.0 (2017-04-21)
-## Platform: x86_64-pc-linux-gnu (64-bit)
-## Running under: Ubuntu 16.10
+## Platform: x86_64-apple-darwin15.6.0 (64-bit)
+## Running under: OS X El Capitan 10.11.6
 ## 
 ## Matrix products: default
-## BLAS: /usr/lib/libblas/libblas.so.3.6.1
-## LAPACK: /usr/lib/lapack/liblapack.so.3.6.1
+## BLAS: /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/3.4/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
-##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
-##  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
-##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
-##  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
-##  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
-## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
 ## 
 ## attached base packages:
-## [1] parallel  stats4    stats     graphics  grDevices datasets  utils    
+## [1] stats4    parallel  stats     graphics  grDevices datasets  utils    
 ## [8] methods   base     
 ## 
 ## other attached packages:
-##  [1] bindrcpp_0.2                           
-##  [2] dplyr_0.7.1                            
+##  [1] rjson_0.2.15                           
+##  [2] dplyr_0.5.0                            
 ##  [3] ggplot2_2.2.1                          
 ##  [4] Homo.sapiens_1.3.1                     
 ##  [5] TxDb.Hsapiens.UCSC.hg19.knownGene_3.2.2
 ##  [6] org.Hs.eg.db_3.4.1                     
 ##  [7] GO.db_3.4.1                            
-##  [8] OrganismDbi_1.19.0                     
-##  [9] GenomicFeatures_1.29.6                 
-## [10] AnnotationDbi_1.39.0                   
-## [11] DESeq2_1.17.3                          
-## [12] SummarizedExperiment_1.7.2             
-## [13] DelayedArray_0.3.6                     
-## [14] matrixStats_0.52.2                     
-## [15] Biobase_2.37.2                         
-## [16] GenomicRanges_1.29.4                   
-## [17] GenomeInfoDb_1.13.1                    
-## [18] IRanges_2.11.3                         
-## [19] S4Vectors_0.15.2                       
-## [20] BiocGenerics_0.23.0                    
-## [21] readr_1.1.1                            
-## [22] tximport_1.5.0                         
-## [23] rjson_0.2.15                           
-## [24] rmarkdown_1.5                          
-## [25] magrittr_1.5                           
-## [26] knitr_1.16                             
-## [27] devtools_1.13.1                        
-## [28] BiocInstaller_1.27.2                   
+##  [8] OrganismDbi_1.18.0                     
+##  [9] GenomicFeatures_1.28.3                 
+## [10] AnnotationDbi_1.38.1                   
+## [11] magrittr_1.5                           
+## [12] DESeq2_1.16.1                          
+## [13] SummarizedExperiment_1.6.3             
+## [14] DelayedArray_0.2.7                     
+## [15] matrixStats_0.52.2                     
+## [16] Biobase_2.36.2                         
+## [17] GenomicRanges_1.28.3                   
+## [18] GenomeInfoDb_1.12.2                    
+## [19] IRanges_2.10.2                         
+## [20] S4Vectors_0.14.3                       
+## [21] BiocGenerics_0.22.0                    
+## [22] readr_1.1.1                            
+## [23] tximport_1.4.0                         
+## [24] knitr_1.16                             
+## [25] rmarkdown_1.6                          
+## [26] BiocInstaller_1.26.0                   
+## [27] testthat_1.0.2                         
+## [28] devtools_1.13.2                        
 ## 
 ## loaded via a namespace (and not attached):
 ##  [1] bitops_1.0-6             RColorBrewer_1.1-2      
-##  [3] progress_1.1.2           rprojroot_1.2           
-##  [5] tools_3.4.0              backports_1.1.0         
-##  [7] R6_2.2.1                 rpart_4.1-11            
-##  [9] Hmisc_4.0-3              DBI_0.6-1               
-## [11] lazyeval_0.2.0           colorspace_1.3-2        
-## [13] nnet_7.3-12              withr_1.0.2             
-## [15] gridExtra_2.2.1          prettyunits_1.0.2       
-## [17] compiler_3.4.0           graph_1.55.0            
-## [19] htmlTable_1.9            rtracklayer_1.37.2      
-## [21] labeling_0.3             scales_0.4.1            
-## [23] checkmate_1.8.2          genefilter_1.59.0       
-## [25] RBGL_1.53.0              stringr_1.2.0           
-## [27] digest_0.6.12            Rsamtools_1.29.0        
-## [29] foreign_0.8-67           XVector_0.17.0          
-## [31] pkgconfig_2.0.1          base64enc_0.1-3         
-## [33] htmltools_0.3.6          htmlwidgets_0.8         
-## [35] rlang_0.1.1              RSQLite_1.1-2           
-## [37] bindr_0.1                BiocParallel_1.11.1     
-## [39] acepack_1.4.1            RCurl_1.95-4.8          
-## [41] GenomeInfoDbData_0.99.0  Formula_1.2-1           
-## [43] Matrix_1.2-10            Rcpp_0.12.11            
-## [45] munsell_0.4.3            stringi_1.1.5           
-## [47] yaml_2.1.14              zlibbioc_1.23.0         
-## [49] plyr_1.8.4               grid_3.4.0              
-## [51] lattice_0.20-35          Biostrings_2.45.2       
-## [53] splines_3.4.0            annotate_1.55.0         
-## [55] hms_0.3                  locfit_1.5-9.1          
-## [57] geneplotter_1.55.0       codetools_0.2-14        
-## [59] biomaRt_2.33.3           glue_1.1.1              
-## [61] XML_3.98-1.7             evaluate_0.10           
-## [63] latticeExtra_0.6-28      data.table_1.10.4       
-## [65] gtable_0.2.0             assertthat_0.2.0        
-## [67] xtable_1.8-2             survival_2.41-3         
-## [69] tibble_1.3.1             GenomicAlignments_1.13.2
-## [71] memoise_1.1.0            cluster_2.0.6
+##  [3] rprojroot_1.2            tools_3.4.0             
+##  [5] backports_1.1.0          R6_2.2.1                
+##  [7] rpart_4.1-11             Hmisc_4.0-3             
+##  [9] DBI_0.6-1                lazyeval_0.2.0          
+## [11] colorspace_1.3-2         nnet_7.3-12             
+## [13] withr_1.0.2              gridExtra_2.2.1         
+## [15] compiler_3.4.0           graph_1.54.0            
+## [17] htmlTable_1.9            rtracklayer_1.36.3      
+## [19] labeling_0.3             scales_0.4.1            
+## [21] checkmate_1.8.2          genefilter_1.58.1       
+## [23] RBGL_1.52.0              stringr_1.2.0           
+## [25] digest_0.6.12            Rsamtools_1.28.0        
+## [27] foreign_0.8-68           XVector_0.16.0          
+## [29] base64enc_0.1-3          htmltools_0.3.6         
+## [31] htmlwidgets_0.8          rlang_0.1.1             
+## [33] RSQLite_1.1-2            BiocParallel_1.10.1     
+## [35] acepack_1.4.1            RCurl_1.95-4.8          
+## [37] GenomeInfoDbData_0.99.0  Formula_1.2-1           
+## [39] Matrix_1.2-10            Rcpp_0.12.11            
+## [41] munsell_0.4.3            stringi_1.1.5           
+## [43] yaml_2.1.14              zlibbioc_1.22.0         
+## [45] plyr_1.8.4               grid_3.4.0              
+## [47] crayon_1.3.2             lattice_0.20-35         
+## [49] Biostrings_2.44.1        splines_3.4.0           
+## [51] annotate_1.54.0          hms_0.3                 
+## [53] locfit_1.5-9.1           geneplotter_1.54.0      
+## [55] codetools_0.2-15         biomaRt_2.32.1          
+## [57] XML_3.98-1.7             evaluate_0.10           
+## [59] latticeExtra_0.6-28      data.table_1.10.4       
+## [61] gtable_0.2.0             assertthat_0.2.0        
+## [63] xtable_1.8-2             survival_2.41-3         
+## [65] tibble_1.3.3             GenomicAlignments_1.12.1
+## [67] memoise_1.1.0            cluster_2.0.6
 ```

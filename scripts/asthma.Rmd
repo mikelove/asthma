@@ -240,7 +240,7 @@ dat <- plotCounts(dds, target.map[2], c("condition","treatment","id.nested"),
 ```{r targets2, warning=FALSE, fig.width=7, fig.height=4}
 library(ggplot2)
 ggplot(dat, aes(x=treatment, y=count, col=id.nested, group=id.nested)) +
-  geom_point() + geom_smooth(method="lm") +
+  geom_point() + geom_smooth(method="lm", se=FALSE) +
   scale_y_log10() + 
   facet_wrap(~condition)
 ```

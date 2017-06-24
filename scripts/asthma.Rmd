@@ -1,7 +1,8 @@
 ---
-title: Exploratory and statistical analysis of RNA-seq data using DESeq2
-author: Michael Love
-date: June 2017
+title: "Exploratory and statistical analysis of RNA-seq data using DESeq2"
+author: "Michael Love"
+date: "June 2017"
+abstract: "This workflow covers basic steps in an exploratory and statistical analysis of RNA-seq data, from import of Salmon quantifications, to performing differential gene expression and looking up annotation information about significant genes. The experimental data consists of control and virus treated samples from 6 asthmatic and 6 non-asthmatic individuals, where a given individual has both a control (Vehicle) and treated (HRV16) sample."
 output:
   html_document:
     toc: true
@@ -15,14 +16,47 @@ opts_chunk$set(cache=TRUE, fig.width=5, fig.height=5)
 
 # Importing Salmon quant files
 
+We begin this workflow by importing Salmon quantifications which are 
+included in this repository under `data/quant`. Relative to the `scripts` 
+directory, we can see we have quantifications for 24 samples:
+
 ```{r}
-library(rjson)
-library(tximport)
+list.files("../data/quant/")
+```
+
+The layout of a single sample's quantification directory
+
+```{r}
+list.files("../data/quant/SRR1565926")
+```
+
+We will read in a table we created from the SRA website, which
+gives some of the sample information. We call this table `coldata`,
+because it provides data about the *columns* of the count matrix
+we will be assembling.
+
+```{r}
 library(readr)
 coldata <- read_delim("../data/SraRunTable.txt", delim="\t")
+coldata
+```
+
+We have used the run ID (`SRR...`) to keep track of the reads and quantifications,
+so we can build a vector which points to our quantification files using
+this column of `coldata`. We use `names` to name this vector with the run IDs as well.
+
+```{r}
 files <- file.path("../data/quant",coldata$Run_s,"quant.sf.gz")
 names(files) <- coldata$Run_s
+head(files,2)
 ```
+
+The following code (not evaluated here) can be used to generate a table
+that connects transcripts to genes for summarizing Salmon transcript
+quantifications for differential gene expression. We simply
+read in the GTF file from the same database that we used for building
+the Salmon index (in this case, Gencode version 26), and then pull
+out a table with the transcript name for every gene.
 
 ```{r eval=FALSE}
 # ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_26/gencode.v26.annotation.gtf.gz
@@ -37,17 +71,39 @@ res <- AnnotationDbi::select(txdb, k, "TXNAME", "GENEID")
 tx2gene <- res[,2:1]
 ```
 	
+We have prepared this table in advance, and now load it:
+	
 ```{r}
 load("../data/tx2gene.rda")
+head(tx2gene)
 ```
 
+Now we can use the `tximport` function to assemble all the quantifications
+from the 24 files, and to summarize the abundances, counts and transcript
+lengths to the gene level, for use with DESeq2 and other Bioconductor
+packages.
+
+It's a good idea to first test on a single quantification file, which we show here:
+
 ```{r}
+library(rjson)
+library(tximport)
 txi <- tximport(files[1], type="salmon", tx2gene=tx2gene)
 ```
 
+Now we can run `tximport` over all the quanfitication files.
+We can see we obtain a list of matrices with common dimension:
+58219 (the number of genes) x 24 (the number of samples).
+
 ```{r message=FALSE}
 txi <- tximport(files, type="salmon", tx2gene=tx2gene)
+names(txi)
+dim(txi$abundance)
+dim(txi$counts)
+dim(txi$length)
 ```
+
+Now we load DESeq2 for further steps in the workflow:
 
 ```{r message=FALSE}
 library(DESeq2)

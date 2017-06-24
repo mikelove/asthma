@@ -111,27 +111,107 @@ library(DESeq2)
 
 # Assembling the sample info
 
+In the `coldata` table, we have information about which samples are from
+asthmatic or non-asthmatic individuals, and which samples are control or treated.
+Because we built `txi` using the run IDs, we know that these columns are
+lined up with our columns of the matrices in `txi`.
+
+```{r}
+coldata$disease_state_s
+coldata$treatment_s
+```
+
+While most of the information we need is in the `coldata` table already,
+while preparing this data for analysis, I noticed that the same subjects had 
+both a control (Vehicle) and treated (HRV16) sample, but I didn't find this
+information from the SRA table. It was present, however, in the title of 
+the samples listed on the GEO website, which also points to the run ID.
+We can therefore bring in the sample names from GEO, line them up with
+our coldata, and extract the subject ID information:
+
 ```{r}
 geo <- read_delim("../data/GEO_table.txt", delim="\t", col_names=FALSE)
+head(geo)
 coldata$title <- geo$X2[match(coldata$Sample_Name_s, geo$X1)]
 coldata$condition <- factor(coldata$disease_state_s)
 coldata$treatment <- factor(coldata$treatment_s)
 ```
 
+Now, we will build a `DESeqDataSet` from the matrices in `txi`, 
+which we will use for the rest of the workflow. This function brings
+along the estimated counts per gene, estimated by Salmon, as well as 
+a normalizing offset based on the transcript lengths. This normalizing offset
+adjusts for the *average transcript length* of a gene, which can be influenced
+by differential isoform usage, as well as common RNA-seq biases,
+if we used Salmon flags for correcting for various biases. Both of these effects 
+-- differential isoform usage and technical biases -- 
+can change the *effective length* of a gene, and so both are useful as
+normalizing offsets in a statistical comparisons of counts across samples.
+
+When building the `DESeqDataSet` we have to specify a *design*, which
+is a formula in R that begins with a tilde and explains what terms, or coefficients,
+we want to use to model the counts. The design is used by the dispersion estimation
+and model fitting functions in DESeq2, so we can change it later, but we will have 
+to rerun the main functions to re-estimate the parameters. 
+
+For now, we will use a design that specifies a condition effect (asthmatics vs
+non-asthmatics), a treatment effect (HRV16 vs Vehicle), and an interaction between 
+the two (so the treatment effect can be different for asthmatics and non-asthmatics).
+An interaction term is specified in R with a colon between two variables.
+This design roughly corresponds to the goals of the original study.
+
 ```{r}
 dds <- DESeqDataSetFromTximport(txi, coldata,
                                 ~condition + treatment + condition:treatment)
+dds
 ```
+
+I like to rename the *levels* of the variables in the design so they are
+easier to work with, by shortening them.
+
+```{r}
+# you can rename levels, but need to use same order as current levels()
+levels(dds$condition)
+levels(dds$condition) <- c("asth","non")
+levels(dds$condition)
+dds$condition
+```
+
+It's also important to set the *reference level* in a sensible way,
+so comparisons are of treated over control for instance. In this 
+case the reference levels should be the non-asthmatic individuals and the
+Vehicle treatment.
+
+We use the compound assignment operator `%<>%` from the magrittr package, 
+which saves us a little extra typing, when we want to apply a function 
+to a variable in R, and then re-assign it (so it is equivalent to `x <- f(x)`).
 
 ```{r}
 library(magrittr)
-# you can rename levels, but need to use same order as current levels()
-levels(dds$condition) <- c("asth","non")
 dds$condition %<>% relevel("non")
 dds$treatment %<>% relevel("Vehicle")
+dds$condition
+dds$treatment
 ```
 
 # Exploratory data analysis
+
+Already, we can take a look at how the samples related to each other.
+In DESeq2, we have special functions for transforming the counts,
+so that they can be easily visualized (we will not transform the counts, 
+but use the raw counts later, for statistical testing).
+
+My favorite of these transformation is the `vst`, mostly because it is 
+very fast, and provides transformed (nearly log-scale) data which is
+robust to many problems associated with log-transformed data (for more details,
+see the DESeq2 
+[workflow ](http://www.bioconductor.org/help/workflows/rnaseqGene/#the-rlog-and-variance-stabilizing-transformations)
+or 
+[vignette](https://www.bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#count-data-transformations)
+).
+
+`blind=FALSE` refers to the fact that we will use the *design* in estimating
+the global scale of biological variability, but not directly in the transformation:
 
 ```{r}
 vsd <- vst(dds, blind=FALSE)

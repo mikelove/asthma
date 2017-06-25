@@ -217,9 +217,24 @@ the global scale of biological variability, but not directly in the transformati
 vsd <- vst(dds, blind=FALSE)
 ```
 
+Now that we have normalized and transformed the data, it will have roughly 
+the same variance (except for differentially expressed genes) across the range of
+counts, so from counts in the single digits, up to the most highly expressed 
+genes with very high counts.
+
+We can make a PCA plot, which shows the distribution of the samples
+among the top two dimensions, in terms of the variance explained.
+It's simply a rotation and projection of the transformed data, but 
+picking the "best" 2 dimensions out of the tens of thousands (number of genes).
+
 ```{r pca, fig.width=7, fig.height=4}
 plotPCA(vsd, c("treatment","condition"))
 ```
+
+From the PCA plot, we see that the treatment with HRV16 leads to the most
+variance across samples, for the top variable genes. There seems to be some
+clustering by disease status (what we called `condition`), for the treated samples
+but not much for the control samples.
 
 # Re-arrange sample info
 
@@ -382,8 +397,6 @@ sim.tab <- sim.dat %>% group_by(log2mean, abs.lfc) %>% summarize(power=mean(sig)
 ggplot(sim.tab, aes(x=abs.lfc, y=power, col=log2mean, group=log2mean)) + geom_line()
 ```
 
-# Empirical and nominal FDR
-
 ```{r}
 de <- rep(c(FALSE,TRUE),c(8000,2000))
 set.seed(1)
@@ -403,7 +416,47 @@ FDR <- sapply(threshold, function(t) {
 
 ```{r simfdr}
 plot(threshold, FDR, ylim=c(0,.3), type="b", col="blue",
-     main="Empirical vs nominal FDR")
+     main="Sim: empirical vs nominal FDR")
+abline(0,1)
+```
+
+We can also do a quick power and precision analysis of 
+DESeq2 calls using the highly replicated yeast RNA-seq dataset of 
+[Schurch et al.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4878611/).
+
+```{r}
+load("../data/yeast.rda")
+n <- 5
+set.seed(1)
+idx <- c(sample(which(yeast$condition == "WT"), n),
+         sample(which(yeast$condition == "mut"), n))
+yeast.in <- yeast[,idx]
+yeast.out <- yeast[,-idx]
+yeast.in <- DESeq(yeast.in)
+yeast.out <- DESeq(yeast.out)
+# use LFC threshold, otherwise "too easy": >2/3 genes DE
+res.in <- results(yeast.in, lfcThreshold=1, alpha=.1)
+res.out <- results(yeast.out, lfcThreshold=1, alpha=.01)
+res.out$padj[is.na(res.out$padj)] <- 1 # set NA to 1
+de <- res.out$padj < .01 # consider 'out' with 1% FDR as 'truth'
+prop.table(table(test=res.in$padj < .1, de),1)
+```
+
+```{r}
+sapply(threshold, function(t) {
+  res.in <- results(yeast.in, lfcThreshold=1, alpha=t)
+  sum(res.in$padj < t, na.rm=TRUE)
+})
+FDR <- sapply(threshold, function(t) {
+  res.in <- results(yeast.in, lfcThreshold=1, alpha=t)
+  sig <- which(res.in$padj < t)
+  mean(!de[sig])
+})
+```
+
+```{r yeastfdr}
+plot(threshold, FDR, ylim=c(0,.3), type="b", col="blue",
+     main="High replicate yeast: empirical vs nominal FDR")
 abline(0,1)
 ```
 

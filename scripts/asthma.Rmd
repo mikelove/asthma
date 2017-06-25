@@ -340,16 +340,40 @@ These functions do a little of work for you, and
 they have extensive help describing all their options,
 which can be read by typing in `?DESeq` and `?results`.
 
+We will build a results table for the coefficient
+`conditionasth.treatmentHRV16`. This coefficient represents
+the difference in the treatment effect in the asthmatic group
+relative to the non-asthmatic group.
+
 ```{r}
 dds <- DESeq(dds)
 resultsNames(dds)
-res <- results(dds)
+res <- results(dds, name="conditionasth.treatmentHRV16")
 res.sort <- res[order(res$pvalue),]
 ```
+
+A good visual summary of a results table is the "MA-plot".
+M stands for "minus", as the y-axis for a simple two group
+comparison is the difference between the log of the expression
+values for each group. In general, and for this experiment, the y-axis
+is the log2 fold change attributable to the coefficient or contrast
+that was used in building the results table. The "A" stands for average,
+as the x-axis indicates the average of normalized counts across 
+all the samples in the dataset.
+
+Because all of the points are grey, we know that none of the 
+genes showed a significant difference in the treatment effect
+across the two condition groups, at an FDR cutoff of 0.1 
+(this is the default value for `plotMA`, and can be changed).
 
 ```{r plotma}
 plotMA(res, ylim=c(-5,5))
 ```
+
+We can also print out a summary table, which 
+similarly tells us that, at an FDR cutoff of 0.1,
+no genes were significantly differentially expressed
+for our particular comparison.
 
 ```{r}
 summary(res)

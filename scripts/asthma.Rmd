@@ -159,7 +159,7 @@ non-asthmatics), a treatment effect (HRV16 vs Vehicle), and an interaction betwe
 the two (so the treatment effect can be different for asthmatics and non-asthmatics).
 An interaction term is specified in R with a colon between two variables.
 This design roughly corresponds to the goals of the original study.
-The samples are from human airway epithelial, and so we can expect to see a reaction
+The samples are human airway epithelial cells, and so we can expect to see a reaction
 in these cells upon treatment with virus.
 
 ```{r}

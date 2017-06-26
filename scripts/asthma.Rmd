@@ -352,6 +352,8 @@ res <- results(dds, name="conditionasth.treatmentHRV16")
 res.sort <- res[order(res$pvalue),]
 ```
 
+# Exploring results
+
 A good visual summary of a results table is the "MA-plot".
 M stands for "minus", as the y-axis for a simple two group
 comparison is the difference between the log of the expression
@@ -386,19 +388,68 @@ summary(res)
 set.seed(1)
 ```
 
+While we didn't get any genes at an FDR cutoff of 0.1, we can
+look at the top gene by adjusted p-value, in 
+terms of the normalized counts in the different groups.
+
+There does seem to be a trend of downregulation of this gene
+for non-asthmatics, and up-regulation for asthmatics, 
+but generally the fold changes across treatment are not very
+consistent within conditions.
+
+We've added the ID within each condition as a plotting character
+`pch`:
+
 ```{r topgene1}
 top.gene <- rownames(res.sort)[1]
-plotCounts(dds, top.gene, c("condition","treatment"), transform=FALSE)
+plotCounts(dds, top.gene, c("condition","treatment"), 
+           transform=FALSE, pch=as.integer(dds$id.nested))
 ```
 
-# Exploring results
+We can also make a plot which draws lines
+between the expression values across treatment for a given sample.
+To do so, we need to use the `ggplot2` library. First, we 
+export a little table of the counts and design variables 
+for the top gene:
+
+```{r}
+dat <- plotCounts(dds, top.gene, c("condition","treatment","id.nested"),
+                  returnData=TRUE)
+```
+
+Next we form the `ggplot2` code, using points and a smooth line
+to connect the points for each ID in each condition group.
+It makes sense that this is the top gene for testing different slope
+across condition, but the slopes are not entirely consistent
+across the samples within a condition, which explains why
+it's not more significant in the hypothesis test.
+
+```{r targets2, warning=FALSE, fig.width=7, fig.height=4}
+library(ggplot2)
+ggplot(dat, aes(x=treatment, y=count, col=id.nested, group=id.nested)) +
+  geom_point() + geom_smooth(method="lm", se=FALSE) +
+  scale_y_log10() + 
+  facet_wrap(~condition)
+```
+
+We can look up the gene symbol for the top gene using an annotation package.
+These packages have a number of functions for pulling out annotations,
+here we will show the `mapIds` function and the `select` function.
+`select` is the name for a function in the `dplyr` package,
+so we have to use the package prefix `AnnotationDbi::` to call
+our version of `select`.
 
 ```{r}
 library(Homo.sapiens)
 Homo.sapiens %>% mapIds(top.gene, "SYMBOL", "ENSEMBL")
 go.tab <- Homo.sapiens %>% AnnotationDbi::select(top.gene, "GOID", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
-# Homo.sapiens %>% AnnotationDbi::select(go.tab$GOID, "TERM", "GOID")
+go.tab
 ```
+
+A number of gene symbols were listed in the abstract of the paper 
+(one of which we swapped here for a more common gene symbol).
+We can do a reverse lookup, to see where they are showing up
+in our list of ranked genes:
 
 ```{r}
 target <- c("CCL5","CXCL10","CX3CL1","ACKR4","CDHR3")
@@ -407,22 +458,11 @@ target.map
 match(target.map, rownames(res.sort))
 ```
 
+Let's take a look at the counts for the second gene symbol from above:
+
 ```{r targets}
 plotCounts(dds, target.map[2], c("condition","treatment"))
 plotCounts(dds, target.map[2], c("condition","treatment"), transform=FALSE)
-```
-
-```{r}
-dat <- plotCounts(dds, target.map[2], c("condition","treatment","id.nested"),
-                  returnData=TRUE)
-```
-
-```{r targets2, warning=FALSE, fig.width=7, fig.height=4}
-library(ggplot2)
-ggplot(dat, aes(x=treatment, y=count, col=id.nested, group=id.nested)) +
-  geom_point() + geom_smooth(method="lm", se=FALSE) +
-  scale_y_log10() + 
-  facet_wrap(~condition)
 ```
 
 # Interlude: power analysis

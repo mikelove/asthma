@@ -628,6 +628,11 @@ in the range 10-100 needs to be greater than 1.
 ggplot(sim.tab, aes(x=abs.LFC, y=power, col=mean, group=mean)) + geom_line()
 ```
 
+While we have our dispersion-mean function, we can see how DESeq2
+performs when many of the genes are *null*, that is the log2 fold
+change is exactly equal to 0. We simulate another dataset,
+with 80% of null genes and a wider spread of mean counts.
+
 ```{r}
 de <- rep(c(FALSE,TRUE),c(8000,2000))
 set.seed(1)
@@ -637,6 +642,12 @@ sim2 <- makeExampleDESeqDataSet(n=10000, m=12,
                                 interceptSD=3,
                                 dispMeanRel=dmr)
 sim2 <- DESeq(sim2)
+```
+
+We can then see how many null genes end up in FDR sets at
+increasing cutoffs.
+
+```{r}
 threshold <- c(1,5,10,15,20)/100
 FDR <- sapply(threshold, function(t) {
   sim2.res <- results(sim2, alpha=t)
@@ -644,6 +655,10 @@ FDR <- sapply(threshold, function(t) {
   mean(!de[sig])
 })
 ```
+
+The rate of null genes is roughly on target with the 
+*nominal* amount, that is, the amount of false discovery
+rate we asked for.
 
 ```{r simfdr}
 plot(threshold, FDR, ylim=c(0,.3), type="b", col="blue",
@@ -654,9 +669,23 @@ abline(0,1)
 We can also do a quick power and precision analysis of 
 DESeq2 calls using the highly replicated yeast RNA-seq dataset of 
 [Schurch et al.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4878611/).
+This dataset, designed for benchmarking RNA-seq for power analysis,
+has more than 40 biological replicates in two condition, one of 
+wild type yeast and a mutant strain, *Δsnf2*.
 
 ```{r}
 load("../data/yeast.rda")
+dim(yeast)
+table(yeast$condition)
+```
+
+We can compare an analysis with 5 samples randomly drawn from each group,
+with the results from running an analysis on the held-out samples. We would
+expect that with 37-39 samples in the held-out set, we are close to finding 
+all the differentially expressed genes, and so this can be considered a 
+"gold standard" set.
+
+```{r}
 n <- 5
 set.seed(1)
 idx <- c(sample(which(yeast$condition == "WT"), n),
@@ -665,13 +694,29 @@ yeast.in <- yeast[,idx]
 yeast.out <- yeast[,-idx]
 yeast.in <- DESeq(yeast.in)
 yeast.out <- DESeq(yeast.out)
-# use LFC threshold, otherwise "too easy": >2/3 genes DE
+```
+
+The mutation in this experiment results in the majority of genes having small, 
+statistically significant fold changes, so it's a bit too easy 
+if we would look to see which genes are common across the two
+analyses. We will require that the log2 fold changes show statistical
+evidence of being larger than 1 in absolute value. And we will
+require that a low FDR cutoff in the held-out set, 1%, because we 
+think that we have sufficient replicates (37-39), to have sufficient power
+to detect these genes.
+
+```{r}
 res.in <- results(yeast.in, lfcThreshold=1, alpha=.1)
 res.out <- results(yeast.out, lfcThreshold=1, alpha=.01)
 res.out$padj[is.na(res.out$padj)] <- 1 # set NA to 1
 de <- res.out$padj < .01 # consider 'out' with 1% FDR as 'truth'
 prop.table(table(test=res.in$padj < .1, de),1)
 ```
+
+We can look to see how many genes in the subset are called at various
+FDR thresholds, and then we calculate the number of "null" genes,
+that is, genes which do not show statistical evidence of having an LFC
+larger than 1 in absolute value in the held-out set:
 
 ```{r}
 sapply(threshold, function(t) {
@@ -685,6 +730,11 @@ FDR <- sapply(threshold, function(t) {
 })
 ```
 
+From this analysis, DESeq2 is close to the target for
+low cutoffs, but then as we build larger sets with higher
+cutoff values, we have lower FDR than nominal for the test of 
+LFC greater than 1.
+
 ```{r yeastfdr}
 plot(threshold, FDR, ylim=c(0,.3), type="b", col="blue",
      main="High replicate yeast: empirical vs nominal FDR")
@@ -692,6 +742,10 @@ abline(0,1)
 ```
 
 # Other differential analyses
+
+Now that we've taken a look at how power depends on effect size and mean count,
+let's return to our dataset, and try different statistical analyses,
+other than the test of differences across condition in the treatment effect.
 
 ```{r}
 dds2 <- removeResults(dds)

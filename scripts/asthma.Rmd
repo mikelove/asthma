@@ -467,24 +467,107 @@ plotCounts(dds, target.map[2], c("condition","treatment"), transform=FALSE)
 
 # Interlude: power analysis
 
+With your standard t-test or linear regression on a one dimensional *Y*, 
+performing a post-hoc power analysis doesn't make sense, because the observed effect
+size and variance estimate functionally determine the estimated power just as 
+they do the observed p-value. In other words, it's entirely 
+circular to show that with a standard power analysis formula,
+using the post-hoc observed effect size and variance, it will say 
+the experiment was "under-powered", if you have an observed 
+p-value above your critical threshold (and the converse). 
+It makes more sense to perform power analyses for a range of effect sizes, 
+and using your best estimate of within-group variance.
+
+Here we will do something a little different, we will assess via 
+simulation what range of effect sizes and count ranges would have
+been significant, given the observed variance of counts.
+We will work with a value called *dispersion* which links
+the variance to the mean in a negative binomial distribution 
+(this is the distribution used to model counts in DESeq2).
+Roughly, the dispersion is the square of the coefficient of
+variation of counts. So dipersion of 0.01 implies that the counts
+might vary by about 10% around their mean value.
+
+```{r}
+sqrt(.01)
+```
+
+DESeq2 estimates dispersion values for each gene, first a 
+*maximum likelihood value*, and then a *maximum posterior* value.
+For full details, you can take a look at the 
+[DESeq2 paper](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-014-0550-8), 
+but briefly, the maximum likelihood value just looks at the data for a single
+gene, while the maximum posterior value integrates the information
+from the individual gene with the information about all the genes.
+If the maximum likelihood estimate for a single gene 
+differs greatly from the estimates of the majority of the other genes,
+that gene's estimate will be "pulled in" or "shrunk" towards the estimates 
+of the others. It's not shrunk all the way, and the amount is determined
+by a formula called *Bayes formula*. It can be shown that these posterior
+estimates have less error overall than the maximum likelihood estimates,
+if we structure the formula in the right way. They end up preventing
+a lot of false positives, where we might by chance have a 
+too-small dispersion estimate for some genes, in particular when 
+the sample sizes are small.
+
+Here we can plot the dispersion estimates for this dataset.
+The black points are the maximum likelihood estimates ("gene-est"),
+and the blue points are the maximum posterior estimates ("final").
+
 ```{r plotdisp}
 plotDispEsts(dds, ylim=c(1e-4,10))
 ```
 
+We can extract information about how the trend and how the values 
+clustered around the trend. We will write an R function
+that takes in a mean normalized count, and outputs
+a plausible dispersion value for this dataset.
+The `.05` and `2.06` come from the coefficients for the red line,
+and the `.28` comes from determining how far the true dispersion values
+are spread around the red line. It's less than the black points,
+as the spread of the black points represents dispersion differences 
+across genes *and* sampling variance.
+
+The `.05` *asymptotic dispersion* means that the counts
+vary by about 22% of their expected value, when the counts are high.
+
 ```{r}
 dispersionFunction(dds)
 dmr <- function(x) (.05 + 2.06 / x) * exp(rnorm(length(x),0,.28))
-baseMean <- mcols(dds)$baseMean
 ```
 
+This is what our `dmr` function returns, when we
+feed in the mean of normalized counts from the dataset.
+
 ```{r simdisp}
+baseMean <- mcols(dds)$baseMean
 plot(baseMean, dmr(baseMean), log="xy", ylim=c(1e-4,10))
 ```
+
+We can see what the mean and standard deviation
+of the log2 of mean counts was. Note that this
+experiment had much lower sequencing depth than 
+is typical for a human RNA-seq dataset. Typically, 
+total counts of 20-40 million are common. This
+dataset has about 1/10 of that. The mean count is about
+`2^5` or 32.
 
 ```{r}
 mean(log2(baseMean))
 sd(log2(baseMean))
 ```
+
+There is a function in DESeq2 to simulate a dataset
+according to parameters estimated from another dataset.
+Note that, while the previous experiment had a complex
+design structure including control for subject and condition,
+here we just simulate a two group analysis for
+simplicity. We simulate 10,000 genes with 12 samples across two groups,
+and supposing that the true log2 fold changes are centered at 
+0 with a standard deviation of 1. This means that fold changes
+of 1/2 or 2 are common. This will allow us to see how high
+the fold changes will need to be to end up in the set of
+differentially expressed genes.
 
 ```{r}
 set.seed(1)
@@ -500,26 +583,49 @@ sim <- DESeq(sim)
 sim.res <- results(sim, independentFiltering=FALSE, cooksCutoff=FALSE)
 ```
 
+We can plot the MA plot from our data, with the simulated data 
+side-by-side. With the caveat that the experimental designs are 
+not the same, in the simulated data we can see that large fold
+changes are detected as differentially expressed at 10% FDR,
+and that this depends on the mean count value. For the smallest 
+mean count genes, the fold change needs to be larger for
+the gene to end up in the significant set.
+
 ```{r compma, fig.width=8, fig.height=5}
 par(mfrow=c(1,2))
 plotMA(res, xlim=c(1,1e6), ylim=c(-5,5))
 plotMA(sim.res, xlim=c(1,1e6), ylim=c(-5,5))
 ```
 
+We can use `dplyr` and `ggplot2` to perform a more in depth
+comparison of the power at various levels of effect size (log2 fold change)
+and mean count. Because we simulated the data, we can use
+the true log2 fold change and true mean value for the "control"
+group, in order to classify the genes into bins.
+
 ```{r}
 max.lfc <- ceiling(max(abs(mcols(sim)$trueBeta)))
 sim.dat <- data.frame(sig=sim.res$padj < .1,
-                      log2mean=cut(mcols(sim)$trueIntercept,c(-1,3.3,6.6,10,20)),
-                      abs.lfc=cut(abs(mcols(sim)$trueBeta),c(0,.25,.5,1,max.lfc)))
+                      mean=cut(2^mcols(sim)$trueIntercept,c(0,10,100,1000,1e5)),
+                      abs.LFC=cut(abs(mcols(sim)$trueBeta),c(0,.25,.5,1,max.lfc)))
 ```
+
+We group the genes by the mean value and absolute fold change, and calculate the
+statistical power in terms of number of times the adjusted p-values 
+are less than 0.1 (and the genes would end up in the significant set).
 
 ```{r message=FALSE}
 library(dplyr) 
-sim.tab <- sim.dat %>% group_by(log2mean, abs.lfc) %>% summarize(power=mean(sig))
+sim.tab <- sim.dat %>% group_by(mean, abs.LFC) %>% summarize(power=mean(sig))
 ```
 
+Plotting these power curves, we can see that the power is low for genes 
+with small absolute LFC and genes with small mean count. To achieve
+75% power for detection, the log2 fold change for a gene with mean count
+in the range 10-100 needs to be greater than 1.
+
 ```{r power}
-ggplot(sim.tab, aes(x=abs.lfc, y=power, col=log2mean, group=log2mean)) + geom_line()
+ggplot(sim.tab, aes(x=abs.LFC, y=power, col=mean, group=mean)) + geom_line()
 ```
 
 ```{r}

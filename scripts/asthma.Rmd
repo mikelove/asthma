@@ -333,7 +333,7 @@ have 3 samples with a count of 10 or more:
 dds <- dds[rowSums(counts(dds)) > 0,]
 keep <- rowSums(counts(dds) >= 10) >= 3
 table(keep)
-dds <- dds[keep,] # filter out them out
+dds <- dds[keep,] # filter them out
 ```
 
 Now we can run the differential expression pipeline using

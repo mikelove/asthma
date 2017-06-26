@@ -689,7 +689,7 @@ table(keep)
 ```
 
 ```r
-dds <- dds[keep,] # filter out them out
+dds <- dds[keep,] # filter them out
 ```
 
 Now we can run the differential expression pipeline using

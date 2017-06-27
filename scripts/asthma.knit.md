@@ -822,7 +822,7 @@ plotCounts(dds, top.gene, c("condition","treatment"),
            transform=FALSE, pch=as.integer(dds$id.nested))
 ```
 
-<img src="asthma_files/figure-html/topgene1-1.png" width="480" />
+<img src="asthma_files/figure-html/topgene1-1.png" width="672" />
 
 We can also make a plot which draws lines
 between the expression values across treatment for a given sample.
@@ -942,13 +942,13 @@ Let's take a look at the counts for the second gene symbol from above:
 plotCounts(dds, target.map[2], c("condition","treatment"))
 ```
 
-<img src="asthma_files/figure-html/targets-1.png" width="480" />
+<img src="asthma_files/figure-html/targets-1.png" width="672" />
 
 ```r
 plotCounts(dds, target.map[2], c("condition","treatment"), transform=FALSE)
 ```
 
-<img src="asthma_files/figure-html/targets-2.png" width="480" />
+<img src="asthma_files/figure-html/targets-2.png" width="672" />
 
 # Interlude: power analysis
 

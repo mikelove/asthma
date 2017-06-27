@@ -402,7 +402,7 @@ consistent within conditions.
 We've added the ID within each condition as a plotting character
 `pch`:
 
-```{r topgene1}
+```{r topgene1, fig.width=7, fig.height=5}
 top.gene <- rownames(res.sort)[1]
 plotCounts(dds, top.gene, c("condition","treatment"), 
            transform=FALSE, pch=as.integer(dds$id.nested))
@@ -466,7 +466,7 @@ match(target.map, rownames(res.sort))
 
 Let's take a look at the counts for the second gene symbol from above:
 
-```{r targets}
+```{r targets, fig.width=7, fig.height=5}
 plotCounts(dds, target.map[2], c("condition","treatment"))
 plotCounts(dds, target.map[2], c("condition","treatment"), transform=FALSE)
 ```

@@ -446,9 +446,9 @@ specifically terms that are classified as biological processes (BP).
 We will explore GO terms further in a later section of this workflow.
 
 ```{r}
-library(Homo.sapiens)
-Homo.sapiens %>% mapIds(top.gene, "SYMBOL", "ENSEMBL")
-go.tab <- Homo.sapiens %>% AnnotationDbi::select(top.gene, "GOID", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
+library(org.Hs.eg.db)
+org.Hs.eg.db %>% mapIds(top.gene, "SYMBOL", "ENSEMBL")
+go.tab <- org.Hs.eg.db %>% AnnotationDbi::select(top.gene, "GO", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
 go.tab
 ```
 
@@ -459,7 +459,7 @@ in our list of ranked genes:
 
 ```{r}
 target <- c("CCL5","CXCL10","CX3CL1","ACKR4","CDHR3")
-target.map <- mapIds(Homo.sapiens, target, "ENSEMBL", "SYMBOL")
+target.map <- mapIds(org.Hs.eg.db, target, "ENSEMBL", "SYMBOL")
 target.map
 match(target.map, rownames(res.sort))
 ```
@@ -803,7 +803,7 @@ res2.up <- results(dds2, name="treatment_HRV16_vs_Vehicle",
                    lfcThreshold=1, altHypothesis="greater")
 res2.up <- res2.up[res2.up$padj < .1,]
 res2.sort <- res2.up[order(res2.up$log2FoldChange, decreasing=TRUE),]
-Homo.sapiens %>% mapIds(rownames(res2.sort)[1:40],
+org.Hs.eg.db %>% mapIds(rownames(res2.sort)[1:40],
                         "SYMBOL", "ENSEMBL")
 ```
 
@@ -820,7 +820,7 @@ We can dive deeper into the top genes, by looking up
 what biological processes these are associated with.
 
 ```{r}
-go.tab <- Homo.sapiens %>% AnnotationDbi::select(rownames(res2.sort)[1],
+go.tab <- org.Hs.eg.db %>% AnnotationDbi::select(rownames(res2.sort)[1],
                                   "GO", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
 go.tab
 ```
@@ -854,9 +854,9 @@ results table:
 
 ```{r}
 getTerms <- function(n) {
-  go.tab <- Homo.sapiens %>% AnnotationDbi::select(rownames(res2.sort)[n],
-                                    "GO", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
-  go.tab2 <- Homo.sapiens %>% AnnotationDbi::select(go.tab$GO, "TERM", "GOID")
+  go.tab <- org.Hs.eg.db %>% AnnotationDbi::select(rownames(res2.sort)[n],
+              "GO", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
+  go.tab2 <- GO.db %>% AnnotationDbi::select(go.tab$GO, "TERM", "GOID")
   substr(go.tab2$TERM, 1, 60)
 }
 ```
@@ -873,8 +873,6 @@ getTerms(3)
 getTerms(4)
 getTerms(5)
 getTerms(6)
-getTerms(7)
-getTerms(8)
 ```
 
 # LFC shrinkage

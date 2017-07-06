@@ -867,8 +867,8 @@ We will explore GO terms further in a later section of this workflow.
 
 
 ```r
-library(Homo.sapiens)
-Homo.sapiens %>% mapIds(top.gene, "SYMBOL", "ENSEMBL")
+library(org.Hs.eg.db)
+org.Hs.eg.db %>% mapIds(top.gene, "SYMBOL", "ENSEMBL")
 ```
 
 ```
@@ -881,7 +881,7 @@ Homo.sapiens %>% mapIds(top.gene, "SYMBOL", "ENSEMBL")
 ```
 
 ```r
-go.tab <- Homo.sapiens %>% AnnotationDbi::select(top.gene, "GOID", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
+go.tab <- org.Hs.eg.db %>% AnnotationDbi::select(top.gene, "GO", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
 ```
 
 ```
@@ -893,12 +893,12 @@ go.tab
 ```
 
 ```
-##            ENSEMBL EVIDENCE ONTOLOGY       GOID
-## 7  ENSG00000006025      TAS       BP GO:0006699
-## 8  ENSG00000006025      NAS       BP GO:0010506
-## 11 ENSG00000006025      IEA       BP GO:0015918
-## 12 ENSG00000006025      IMP       BP GO:0071397
-## 14 ENSG00000006025      IMP       BP GO:1901800
+##            ENSEMBL         GO EVIDENCE ONTOLOGY
+## 7  ENSG00000006025 GO:0006699      TAS       BP
+## 8  ENSG00000006025 GO:0010506      NAS       BP
+## 11 ENSG00000006025 GO:0015918      IEA       BP
+## 12 ENSG00000006025 GO:0071397      IMP       BP
+## 14 ENSG00000006025 GO:1901800      IMP       BP
 ```
 
 A number of gene symbols were listed in the abstract of the paper 
@@ -909,7 +909,7 @@ in our list of ranked genes:
 
 ```r
 target <- c("CCL5","CXCL10","CX3CL1","ACKR4","CDHR3")
-target.map <- mapIds(Homo.sapiens, target, "ENSEMBL", "SYMBOL")
+target.map <- mapIds(org.Hs.eg.db, target, "ENSEMBL", "SYMBOL")
 ```
 
 ```
@@ -1548,7 +1548,7 @@ res2.up <- results(dds2, name="treatment_HRV16_vs_Vehicle",
                    lfcThreshold=1, altHypothesis="greater")
 res2.up <- res2.up[res2.up$padj < .1,]
 res2.sort <- res2.up[order(res2.up$log2FoldChange, decreasing=TRUE),]
-Homo.sapiens %>% mapIds(rownames(res2.sort)[1:40],
+org.Hs.eg.db %>% mapIds(rownames(res2.sort)[1:40],
                         "SYMBOL", "ENSEMBL")
 ```
 
@@ -1598,7 +1598,7 @@ what biological processes these are associated with.
 
 
 ```r
-go.tab <- Homo.sapiens %>% AnnotationDbi::select(rownames(res2.sort)[1],
+go.tab <- org.Hs.eg.db %>% AnnotationDbi::select(rownames(res2.sort)[1],
                                   "GO", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
 ```
 
@@ -1721,9 +1721,9 @@ results table:
 
 ```r
 getTerms <- function(n) {
-  go.tab <- Homo.sapiens %>% AnnotationDbi::select(rownames(res2.sort)[n],
-                                    "GO", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
-  go.tab2 <- Homo.sapiens %>% AnnotationDbi::select(go.tab$GO, "TERM", "GOID")
+  go.tab <- org.Hs.eg.db %>% AnnotationDbi::select(rownames(res2.sort)[n],
+              "GO", "ENSEMBL") %>% subset(ONTOLOGY == "BP")
+  go.tab2 <- GO.db %>% AnnotationDbi::select(go.tab$GO, "TERM", "GOID")
   substr(go.tab2$TERM, 1, 60)
 }
 ```
@@ -1869,105 +1869,6 @@ getTerms(6)
 ## [6] "defense response to virus"                                
 ## [7] "defense response to virus"                                
 ## [8] "positive regulation of protein targeting to mitochondrion"
-```
-
-```r
-getTerms(7)
-```
-
-```
-## 'select()' returned 1:many mapping between keys and columns
-## 'select()' returned many:1 mapping between keys and columns
-```
-
-```
-##  [1] "MAPK cascade"                                                
-##  [2] "dendritic cell chemotaxis"                                   
-##  [3] "monocyte chemotaxis"                                         
-##  [4] "regulation of chronic inflammatory response"                 
-##  [5] "calcium ion transport"                                       
-##  [6] "cellular calcium ion homeostasis"                            
-##  [7] "exocytosis"                                                  
-##  [8] "chemotaxis"                                                  
-##  [9] "inflammatory response"                                       
-## [10] "leukocyte cell-cell adhesion"                                
-## [11] "G-protein coupled receptor signaling pathway"                
-## [12] "cell-cell signaling"                                         
-## [13] "response to virus"                                           
-## [14] "response to toxic substance"                                 
-## [15] "positive regulation of activation of JAK2 kinase activity"   
-## [16] "positive regulation of macrophage chemotaxis"                
-## [17] "positive regulation of T cell chemotaxis"                    
-## [18] "positive regulation of phosphatidylinositol 3-kinase signali"
-## [19] "positive regulation of smooth muscle cell migration"         
-## [20] "positive regulation of cell migration"                       
-## [21] "neutrophil chemotaxis"                                       
-## [22] "positive regulation of cellular biosynthetic process"        
-## [23] "activation of phospholipase D activity"                      
-## [24] "lipopolysaccharide-mediated signaling pathway"               
-## [25] "positive regulation of cell-cell adhesion mediated by integr"
-## [26] "positive regulation of homotypic cell-cell adhesion"         
-## [27] "positive regulation of T cell proliferation"                 
-## [28] "neutrophil activation"                                       
-## [29] "positive regulation of phosphorylation"                      
-## [30] "positive regulation of tyrosine phosphorylation of STAT prot"
-## [31] "protein kinase B signaling"                                  
-## [32] "positive regulation of GTPase activity"                      
-## [33] "cellular protein complex assembly"                           
-## [34] "negative regulation by host of viral transcription"          
-## [35] "cellular response to fibroblast growth factor stimulus"      
-## [36] "positive regulation of viral genome replication"             
-## [37] "negative regulation of viral genome replication"             
-## [38] "positive regulation of innate immune response"               
-## [39] "negative regulation of G-protein coupled receptor protein si"
-## [40] "positive regulation of cell adhesion"                        
-## [41] "positive regulation of translational initiation"             
-## [42] "positive regulation of JAK-STAT cascade"                     
-## [43] "eosinophil chemotaxis"                                       
-## [44] "macrophage chemotaxis"                                       
-## [45] "positive regulation of smooth muscle cell proliferation"     
-## [46] "positive regulation of epithelial cell proliferation"        
-## [47] "regulation of insulin secretion"                             
-## [48] "regulation of T cell activation"                             
-## [49] "positive chemotaxis"                                         
-## [50] "protein tetramerization"                                     
-## [51] "positive regulation of calcium ion transport"                
-## [52] "positive regulation of protein tyrosine kinase activity"     
-## [53] "chemokine-mediated signaling pathway"                        
-## [54] "chemokine-mediated signaling pathway"                        
-## [55] "negative regulation of chemokine-mediated signaling pathway" 
-## [56] "negative regulation of T cell apoptotic process"             
-## [57] "positive regulation of T cell apoptotic process"             
-## [58] "positive regulation of ERK1 and ERK2 cascade"                
-## [59] "cellular response to interferon-gamma"                       
-## [60] "cellular response to interleukin-1"                          
-## [61] "cellular response to tumor necrosis factor"                  
-## [62] "cellular response to organic cyclic compound"                
-## [63] "positive regulation of monocyte chemotaxis"                  
-## [64] "regulation of neuron death"                                  
-## [65] "negative regulation of macrophage apoptotic process"         
-## [66] "positive regulation of T cell migration"                     
-## [67] "positive regulation of natural killer cell chemotaxis"
-```
-
-```r
-getTerms(8)
-```
-
-```
-## 'select()' returned 1:many mapping between keys and columns
-## 'select()' returned many:1 mapping between keys and columns
-```
-
-```
-## [1] "apoptotic mitochondrial changes"         
-## [2] "response to virus"                       
-## [3] "response to virus"                       
-## [4] "negative regulation of protein binding"  
-## [5] "cellular response to interferon-alpha"   
-## [6] "positive regulation of apoptotic process"
-## [7] "defense response to virus"               
-## [8] "type I interferon signaling pathway"
 ```
 
 # LFC shrinkage

@@ -1,0 +1,225 @@
+---
+title: "Driving RNA-seq raw data processing with R"
+author: "Sean Davis <seandavi@gmail.com>"
+output:
+  html_document: default
+---
+
+```{r intro, echo=FALSE}
+library(printr)
+```
+
+# Introduction
+
+This workflow is intended to be used prior to Mike Love's [asthma](https://github.com/mikelove/asthma/blob/master/scripts/asthma.knit.md) workflow that starts from quantified RNA-seq data. 
+
+## Learning Outcomes
+
+Students will be able to:
+
+- Use R `system()` calls to drive command-line applications
+- Apply the `salmon` software to RNA-seq FASTQ files
+- Use R to perform basic quality control on FASTQ files
+
+## The data
+
+The data for this exercise are described in [Phenotypic responses of differentiated asthmatic human airway epithelial cultures to rhinovirus.", PLoS One, 2015 Feb 23;10(2):e0118286](https://www.ncbi.nlm.nih.gov/pubmed/25706956). 
+
+> OBJECTIVES: Human airway epithelial cells are the principal target of human rhinovirus (HRV), a common cold pathogen that triggers the majority of asthma exacerbations. The objectives of this study were 1) to evaluate an in vitro air liquid interface cultured human airway epithelial cell model for HRV infection, and 2) to identify gene expression patterns associated with asthma intrinsically and/or after HRV infection using this model.
+>
+> METHODS: Air-liquid interface (ALI) human airway epithelial cell cultures were prepared from 6 asthmatic and 6 non-asthmatic donors. The effects of rhinovirus RV-A16 on ALI cultures were compared. Genome-wide gene expression changes in ALI cultures following HRV infection at 24 hours post exposure were further analyzed using RNA-seq technology. Cellular gene expression and cytokine/chemokine secretion were further evaluated by qPCR and a Luminex-based protein assay, respectively.
+>
+> MAIN RESULTS: ALI cultures were readily infected by HRV. RNA-seq analysis of HRV infected ALI cultures identified sets of genes associated with asthma specific viral responses. These genes are related to inflammatory pathways, epithelial structure and remodeling and cilium assembly and function, including those described previously (e.g. CCL5, CXCL10 and CX3CL1, MUC5AC, CDHR3), and novel ones that were identified for the first time in this study (e.g. CCRL1).
+>
+> CONCLUSIONS: ALI-cultured human airway epithelial cells challenged with HRV are a useful translational model for the study of HRV-induced responses in airway epithelial cells, given that gene expression profile using this model largely recapitulates some important patterns of gene responses in patients during clinical HRV infection. Furthermore, our data emphasize that both abnormal airway epithelial structure and inflammatory signaling are two important asthma signatures, which can be further exacerbated by HRV infection.
+
+# Prequisites
+
+This workflow runs on linux and MacOS. Someone can probably also run it on Windows but doing so will likely require some alterations to the installation of software.
+
+In this example workflow, we will be using the `salmon` software, a pseudo-mapping software that *rapidly* quantifies a set of RNA-seq reads to a reference transcriptome. In most cases, salmon will already be installed. Either check with your compute administrator or simply type `salmon` at the command-line to see if the command is available.
+
+Installing `salmon` for Mac or Linux is straightforward since "binary" releases are available. Navigate to the [github release][salmonrelease] page and download the file that is appropriate. Expand the file and the salmon executable will be available. Using the full path in command-lines is required unless `salmon` is installed into a "system" location or the `PATH` variable is set to include the `salmon` directory.
+
+In addition, the SRA toolkit is necessary to get the raw data from the [Sequence Read Archive (SRA)][NCBISRA]. The SRA toolkit is available [here.][SRAToolkit]
+
+# Working with the linux (or Mac OS) command-line from R
+
+If you are running this workflow on a machine *other than an Amazon Web Services (AWS) instance provide for you*, login to the machine now. If you are using an AWS instance and `shellinabox` is installed (likely yes):
+
+1. Copy the URL for this site (will look something like: `http://ec2-54-85-248-000.compute-1.amazonaws.com`)
+2. Open a new browser tab.
+3. Paste in the URL from step #1, but change the `http` to `https` and add `:4200` to the end of the url (should now resemble `https://ec2-54-85-248-000.compute-1.amazonaws.com:4200`).
+
+You may get a warning about "insecure website" or something like that. Go ahead and allow connection to the site. The username/password are "ubuntu" and "bioc", respectively.
+
+Once logged in, try the following commands.
+
+```{bash results='hide'}
+ls               # list files
+cd fastq         # change directory into the fastq directory
+ls               # list files in the fastq directory
+cd ..            # move up one directory level
+```
+
+While R has functionality for listing files, for example, we can also execute linux/MacOS commands directly from within R by wrapping the command in `system()`. For example:
+
+```{r}
+system('ls',intern = TRUE)
+```
+
+The `intern = TRUE` will cause R to return the output, one line at a time, to R as a character vector.
+
+# Getting data
+
+We need to get data before proceeding. I have already gotten data for you, but here is what I did and you can do it yourself if you like. For working with your own data, the [Reference Files](Reference files) section might remain the same. However, the fastq files will need to be available.
+
+## Reference files
+
+We will be using the [Gencode reference transcripts](https://www.gencodegenes.org/releases/26.html) for this workflow. We will need both the fasta files representing all transcripts and a GTF file for identifying which transcript isoforms go with which genes. Use the website to identify the correct files, but use R to do the downloads:
+
+```{r}
+download.file('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_26/gencode.v26.transcripts.fa.gz',destfile = "gencode.v26.transcripts.fa.gz",quiet = TRUE)
+download.file('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_26/gencode.v26.chr_patch_hapl_scaff.annotation.gtf.gz',destfile = "gencode.v26.chr_patch_hapl_scaff.annotation.gtf.gz", quiet=TRUE)
+```
+
+
+## Raw reads (fastq)
+
+The details on the data for this exercise are available from the [NCBI SRA here][RunTable]. The results from the SRA website were extracted and are available in the table below.  
+
+```{r}
+sra_run_table <- read.table('SraRunTable.txt', sep = "\t", header = TRUE)
+sra_run_table
+```
+
+However, the SRA data are stored in a proprietary format, so a [specific SRA toolkit][SRAToolkit] is necessary to get and the extract the data to FASTQ files. Here, we are going to use the SRA toolkit command `fastq-dump` to generate the fastq files (paired-end) for later mapping. 
+
+The following function:
+
+1. Constructs the command-line that we need as a string, called `cmdline`
+2. Uses `system()` to call the command-line and run the command. Each SRA "Run" accession contains the fastq information for one sample. 
+
+```{r}
+extractSRA <- function(sra_accession,
+                       exe_path = 'fastq-dump',
+                       args = '--split-files --gzip',
+                       outdir = 'fastq',
+                       dry_run = FALSE) 
+  {
+    cmdline = sprintf('%s %s --outdir %s %s', exe_path, args, outdir, sra_accession)
+    if(dry_run) {
+      message("will run with this command line:\n",cmdline)
+    } else {
+      return(system(cmdline))
+    }
+  }
+```
+
+To give the function a try, we can execute the function as a "dry run", which will only give us the resulting command line, but will not have the computer execute it.
+
+```{r}
+extractSRA(sra_run_table$Run_s[1], dry_run = TRUE)
+```
+
+And for real. This will take about two minutes or so.
+
+
+```{r eval=FALSE}
+extractSRA(sra_run_table$Run_s[1])
+```
+
+In the "fastq" directory, we should now find two "fastq.gz" files, the first and second reads for the first sample.
+
+If we wanted to do this for several samples at once and in parallel, we can use the `BiocParallel` package.
+
+```{r eval=FALSE}
+BiocInstaller::biocLite('BiocParallel',suppressUpdates = TRUE)
+library(BiocParallel)
+```
+
+The code below "registers" four "workers" and then extracts the first four samples worth of fastq files *at the same time*, or in parallel. Note that bplapply works very similarly to lapply except that the work is done in chunks of four at a time (or whatever the number of workers is). Here, I tell `fastq-dump` to generate only 10000 reads for each fastq file, just to keep things fastq.
+
+```{r extractFASTQ,eval=FALSE,}
+register(MulticoreParam(multicoreWorkers()*2))
+res = bplapply(sra_run_table$Run_s, extractSRA, 
+               args = "--split-files --gzip -X 10000", outdir = "fake_fastq")
+```
+So, if you now look in the "fake_fastq" directory, you'll see 48 files representing the forward and reverse reads for each of our 24 samples.
+
+```{r}
+head(dir('fake_fastq'))
+```
+
+# Quantifying RNA-seq with Salmon
+
+Quantification with `salmon` is a two-step process. With other softwares, there may be more steps involved. Also, speed and output formats will generally vary quite a bit from one software to the next.
+
+1. Generate an "index" from the transcript sequences. This need only be done once.
+2. For each sample, run `salmon` in "quant" mode, specifying the correct index and fastq files for one sample. This step is run once for each sample.
+
+## Creating the salmon index
+
+Use the salmon software to first [create the index](http://salmon.readthedocs.io/en/latest/salmon.html#quasi-mapping-based-mode-including-lightweight-alignment) necessary before quantification.
+
+```
+# this needs to be typed into the command-line,
+# not into R.
+# 
+# Use the salmon help (salmon index --help) to determing
+# what the next line does.
+salmon index -i gencode.v26 -t gencode.v26.transcripts.fa.gz -p 4
+```
+
+If we want to do the same thing directly from R, we simply need to wrap  the command lines in `system()`.
+
+```{r eval=FALSE}
+system("salmon index -i gencode.v26 -t gencode.v26.transcripts.fa.gz -p 4")
+```
+
+## Quantifying one sample
+
+Now that we have an index and fastq files available for salmon, we can move ahead with quantification. A salmon command-line for one sample looks like:
+
+```{bash}
+salmon quant -i gencode.v26 -1 fastq/SRR1565929_1.fastq.gz -2 fastq/SRR1565929_2.fastq.gz -l A -p 4 -o SRR1565929
+```
+
+To make this general (since we need to run on 24 samples) and to run from R, I wrote a small function.
+
+```{r}
+salmon_quant <- function(samplename, index, fastqdir = 'fastq') {
+  # not pretty, but it works.
+  cmdline = sprintf("salmon quant -i %s -1 %s/%s_1.fastq.gz -2 %s/%s_2.fastq.gz -l A -p 4 -o %s",
+                    index, fastqdir, samplename, fastqdir, samplename, samplename)
+  system(cmdline)
+}
+```
+
+Now, we can run the first sample. Note that I switched to the "data" directory for getting the fastq files simply because it took an hour or so to generate the fastq files and I have supplied them.
+
+```{r eval=FALSE}
+salmon_quant('SRR1565929', "gencode.v26", 'data')
+```
+
+Note that `salmon` can use all four CPUs on our machine. Therefore, we do not want or need to run multiple samples at a time. Instead, we can use a "serial" (one-at-a-time) `lapply` loop.
+
+```{r eval=FALSE}
+for(run in sra_run_table$Run_s) {
+  message("starting: ", run)
+  salmon_quant(run, 'gencode.v26', "data")
+  message("finishing: ", run)
+}
+dat = read.table('SRR1565929/quant.sf')
+head(dat)
+```
+
+# Conclusion
+
+Take a look at the [output files section](http://salmon.readthedocs.io/en/latest/file_formats.html#fileformats) of the salmon documentation. Then, look in the various sample directories. In particular, the quant.sf.gz files (one per sample) represent the transcript-level counts.
+
+[RunTable]: https://trace.ncbi.nlm.nih.gov/Traces/study/?acc=SRP046226
+[SRAStudy]: https://trace.ncbi.nlm.nih.gov/Traces/sra/?study=SRP046226
+[salmonrelease]: https://github.com/COMBINE-lab/salmon/releases
+[NCBISRA]: https://www.ncbi.nlm.nih.gov/sra
+[SRAToolkit]: https://www.ncbi.nlm.nih.gov/sra/docs/toolkitsoft/

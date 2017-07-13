@@ -1,4 +1,4 @@
-sra <- read.delim("../extdata/SraRunTable.txt")
+sra <- read.delim("../data/SraRunTable.txt")
 run <- as.character(sra$Run_s)
 accession2url <- function(x) {
   prefix <- "ftp://ftp.sra.ebi.ac.uk/vol1/fastq"

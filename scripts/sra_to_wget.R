@@ -12,6 +12,6 @@ accession2url <- function(x) {
 
 read1 <- file.path(accession2url(run),paste0(run,"_1.fastq.gz"))
 read2 <- file.path(accession2url(run),paste0(run,"_2.fastq.gz"))
-write(run, "../extdata/srr")
-write(read1, "../extdata/read1")
-write(read2, "../extdata/read2")
+write(run, "../data/srr")
+write(read1, "../data/read1")
+write(read2, "../data/read2")

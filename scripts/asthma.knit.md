@@ -34,7 +34,8 @@ The layout of a single sample's quantification directory
 
 
 ```r
-list.files("../data/quant/SRR1565926")
+library(here)
+list.files(here("data","quant","SRR1565926"))
 ```
 
 ```
@@ -51,7 +52,7 @@ we will be assembling.
 
 ```r
 library(readr)
-coldata <- read_delim("../data/SraRunTable.txt", delim="\t")
+coldata <- read_delim(here("data","SraRunTable.txt"), delim="\t")
 ```
 
 ```
@@ -106,16 +107,16 @@ this column of `coldata`. We use `names` to name this vector with the run IDs as
 
 
 ```r
-files <- file.path("../data/quant",coldata$Run_s,"quant.sf.gz")
+files <- file.path(here("data","quant",coldata$Run_s,"quant.sf.gz"))
 names(files) <- coldata$Run_s
 head(files,2)
 ```
 
 ```
-##                             SRR1565926 
-## "../data/quant/SRR1565926/quant.sf.gz" 
-##                             SRR1565927 
-## "../data/quant/SRR1565927/quant.sf.gz"
+##                                                 SRR1565926 
+## "/home/love/proj/asthma/data/quant/SRR1565926/quant.sf.gz" 
+##                                                 SRR1565927 
+## "/home/love/proj/asthma/data/quant/SRR1565927/quant.sf.gz"
 ```
 
 The following code (not evaluated here) can be used to generate a table
@@ -143,7 +144,7 @@ We have prepared this table in advance, and now load it:
 	
 
 ```r
-load("../data/tx2gene.rda")
+load(here("data","tx2gene.rda"))
 head(tx2gene)
 ```
 
@@ -176,22 +177,9 @@ txi <- tximport(files[1], type="salmon", tx2gene=tx2gene)
 ```
 
 ```
-## 1
-```
-
-```
-## 
-```
-
-```
+## 1 
 ## summarizing abundance
-```
-
-```
 ## summarizing counts
-```
-
-```
 ## summarizing length
 ```
 
@@ -283,7 +271,8 @@ our coldata, and extract the subject ID information:
 
 
 ```r
-geo <- read_delim("../data/GEO_table.txt", delim="\t", col_names=FALSE)
+geo <- read_delim(here("data","GEO_table.txt"),
+                  delim="\t", col_names=FALSE)
 ```
 
 ```
@@ -314,6 +303,38 @@ head(geo)
 coldata$title <- geo$X2[match(coldata$Sample_Name_s, geo$X1)]
 coldata$condition <- factor(coldata$disease_state_s)
 coldata$treatment <- factor(coldata$treatment_s)
+```
+
+I like to rename the *levels* of the variables used for modeling such
+that they are easier to work with, by shortening them.
+
+
+```r
+# you can rename levels, but need to use same order as current levels()
+levels(coldata$condition)
+```
+
+```
+## [1] "asthmatic"     "non-asthmatic"
+```
+
+```r
+levels(coldata$condition) <- c("asth","non")
+levels(coldata$condition)
+```
+
+```
+## [1] "asth" "non"
+```
+
+```r
+coldata$condition
+```
+
+```
+##  [1] asth asth asth asth asth asth asth asth asth asth asth asth non  non 
+## [15] non  non  non  non  non  non  non  non  non  non 
+## Levels: asth non
 ```
 
 Now, we will build a `DESeqDataSet` from the matrices in `txi`, 
@@ -368,39 +389,7 @@ dds
 ##   treatment
 ```
 
-I like to rename the *levels* of the variables in the design so they are
-easier to work with, by shortening them.
-
-
-```r
-# you can rename levels, but need to use same order as current levels()
-levels(dds$condition)
-```
-
-```
-## [1] "asthmatic"     "non-asthmatic"
-```
-
-```r
-levels(dds$condition) <- c("asth","non")
-levels(dds$condition)
-```
-
-```
-## [1] "asth" "non"
-```
-
-```r
-dds$condition
-```
-
-```
-##  [1] asth asth asth asth asth asth asth asth asth asth asth asth non  non 
-## [15] non  non  non  non  non  non  non  non  non  non 
-## Levels: asth non
-```
-
-It's also important to set the *reference level* in a sensible way,
+It's important to set the *reference level* in a sensible way,
 so comparisons are of treated over control for instance. In this 
 case the reference levels should be the non-asthmatic individuals and the
 Vehicle treatment.
@@ -868,6 +857,28 @@ We will explore GO terms further in a later section of this workflow.
 
 ```r
 library(org.Hs.eg.db)
+```
+
+```
+## Loading required package: AnnotationDbi
+```
+
+```
+## 
+## Attaching package: 'AnnotationDbi'
+```
+
+```
+## The following object is masked from 'package:dplyr':
+## 
+##     select
+```
+
+```
+## 
+```
+
+```r
 org.Hs.eg.db %>% mapIds(top.gene, "SYMBOL", "ENSEMBL")
 ```
 
@@ -1019,7 +1030,9 @@ The `.05` and `2.06` come from the coefficients for the red line,
 and the `.28` comes from determining how far the true dispersion values
 are spread around the red line. It's less than the black points,
 as the spread of the black points represents dispersion differences 
-across genes *and* sampling variance.
+across genes *and* sampling variance. Because the `.28` is the
+variance of the spread, we need to take the square root to make it on
+the scale of standard deviation (thanks Bernd Klaus for catching this).
 
 The `.05` *asymptotic dispersion* means that the counts
 vary by about 22% of their expected value, when the counts are high.
@@ -1032,8 +1045,8 @@ dispersionFunction(dds)
 ```
 ## function (q) 
 ## coefs[1] + coefs[2]/q
-## <bytecode: 0x12059a4e8>
-## <environment: 0x1268f7120>
+## <bytecode: 0x55c0051c7290>
+## <environment: 0x55c00ce2ed70>
 ## attr(,"coefficients")
 ## asymptDisp  extraPois 
 ## 0.05393587 2.06449016 
@@ -1046,7 +1059,8 @@ dispersionFunction(dds)
 ```
 
 ```r
-dmr <- function(x) (.05 + 2.06 / x) * exp(rnorm(length(x),0,.28))
+dmr <- function(x) (.05 + 2.06 / x) *
+                     exp(rnorm(n=length(x),mean=0,sd=sqrt(.28)))
 ```
 
 This is what our `dmr` function returns, when we
@@ -1112,7 +1126,7 @@ table(keep)
 ```
 ## keep
 ## FALSE  TRUE 
-##  1249  8751
+##  1282  8718
 ```
 
 ```r
@@ -1175,7 +1189,7 @@ group, in order to classify the genes into bins.
 ```r
 max.lfc <- ceiling(max(abs(mcols(sim)$trueBeta)))
 sim.dat <- data.frame(sig=sim.res$padj < .1,
-                      mean=cut(2^mcols(sim)$trueIntercept,c(0,10,100,1000,1e5)),
+                      mean=cut(2^mcols(sim)$trueIntercept,c(0,10,50,100,1e5)),
                       abs.LFC=cut(abs(mcols(sim)$trueBeta),c(0,.25,.5,1,max.lfc)))
 ```
 
@@ -1192,7 +1206,7 @@ sim.tab <- sim.dat %>% group_by(mean, abs.LFC) %>% summarize(power=mean(sig))
 Plotting these power curves, we can see that the power is low for genes 
 with small absolute LFC and genes with small mean count. To achieve
 75% power for detection, the log2 fold change for a gene with mean count
-in the range 10-100 needs to be greater than 1.
+in the range 50-100 needs to be greater than 1.
 
 
 ```r
@@ -1668,6 +1682,13 @@ package.
 
 ```r
 library(GO.db)
+```
+
+```
+## 
+```
+
+```r
 go.tab2 <- GO.db %>% AnnotationDbi::select(go.tab$GO, "TERM", "GOID")
 ```
 
@@ -1986,84 +2007,74 @@ sessionInfo()
 ```
 
 ```
-## R version 3.4.0 (2017-04-21)
-## Platform: x86_64-apple-darwin15.6.0 (64-bit)
-## Running under: OS X El Capitan 10.11.6
+## R Under development (unstable) (2017-05-23 r72721)
+## Platform: x86_64-pc-linux-gnu (64-bit)
+## Running under: Ubuntu 17.04
 ## 
 ## Matrix products: default
-## BLAS: /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib
-## LAPACK: /Library/Frameworks/R.framework/Versions/3.4/Resources/lib/libRlapack.dylib
+## BLAS: /home/love/bin/R/lib/libRblas.so
+## LAPACK: /home/love/bin/R/lib/libRlapack.so
 ## 
 ## locale:
-## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+##  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+##  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+##  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
 ## 
 ## attached base packages:
 ## [1] parallel  stats4    stats     graphics  grDevices datasets  utils    
 ## [8] methods   base     
 ## 
 ## other attached packages:
-##  [1] rmarkdown_1.6                          
-##  [2] dplyr_0.5.0                            
-##  [3] Homo.sapiens_1.3.1                     
-##  [4] TxDb.Hsapiens.UCSC.hg19.knownGene_3.2.2
-##  [5] org.Hs.eg.db_3.4.1                     
-##  [6] GO.db_3.4.1                            
-##  [7] OrganismDbi_1.18.0                     
-##  [8] GenomicFeatures_1.28.3                 
-##  [9] AnnotationDbi_1.38.1                   
-## [10] ggplot2_2.2.1                          
-## [11] magrittr_1.5                           
-## [12] DESeq2_1.16.1                          
-## [13] SummarizedExperiment_1.6.3             
-## [14] DelayedArray_0.2.7                     
-## [15] matrixStats_0.52.2                     
-## [16] Biobase_2.36.2                         
-## [17] GenomicRanges_1.28.3                   
-## [18] GenomeInfoDb_1.12.2                    
-## [19] IRanges_2.10.2                         
-## [20] S4Vectors_0.14.3                       
-## [21] BiocGenerics_0.22.0                    
-## [22] tximport_1.4.0                         
-## [23] rjson_0.2.15                           
-## [24] readr_1.1.1                            
-## [25] knitr_1.16                             
-## [26] BiocInstaller_1.26.0                   
-## [27] testthat_1.0.2                         
-## [28] devtools_1.13.2                        
+##  [1] GO.db_3.4.2                 org.Hs.eg.db_3.4.2         
+##  [3] AnnotationDbi_1.39.4        knitr_1.17                 
+##  [5] ggplot2_2.2.1               bindrcpp_0.2               
+##  [7] dplyr_0.7.4                 DESeq2_1.17.39             
+##  [9] SummarizedExperiment_1.7.10 DelayedArray_0.3.21        
+## [11] matrixStats_0.52.2          Biobase_2.37.2             
+## [13] GenomicRanges_1.29.15       GenomeInfoDb_1.13.5        
+## [15] IRanges_2.11.19             S4Vectors_0.15.14          
+## [17] BiocGenerics_0.23.3         tximport_1.5.1             
+## [19] rjson_0.2.15                readr_1.1.1                
+## [21] here_0.1                    BiocInstaller_1.27.5       
+## [23] rmarkdown_1.6               magrittr_1.5               
+## [25] testthat_1.0.2              devtools_1.13.3            
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] bitops_1.0-6             RColorBrewer_1.1-2      
-##  [3] rprojroot_1.2            tools_3.4.0             
-##  [5] backports_1.1.0          R6_2.2.1                
-##  [7] rpart_4.1-11             Hmisc_4.0-3             
-##  [9] DBI_0.6-1                lazyeval_0.2.0          
-## [11] colorspace_1.3-2         nnet_7.3-12             
-## [13] withr_1.0.2              gridExtra_2.2.1         
-## [15] compiler_3.4.0           graph_1.54.0            
-## [17] htmlTable_1.9            rtracklayer_1.36.3      
-## [19] labeling_0.3             scales_0.4.1            
-## [21] checkmate_1.8.2          genefilter_1.58.1       
-## [23] RBGL_1.52.0              stringr_1.2.0           
-## [25] digest_0.6.12            Rsamtools_1.28.0        
-## [27] foreign_0.8-68           XVector_0.16.0          
-## [29] base64enc_0.1-3          htmltools_0.3.6         
-## [31] htmlwidgets_0.8          rlang_0.1.1             
-## [33] RSQLite_1.1-2            BiocParallel_1.10.1     
-## [35] acepack_1.4.1            RCurl_1.95-4.8          
-## [37] GenomeInfoDbData_0.99.0  Formula_1.2-1           
-## [39] Matrix_1.2-10            Rcpp_0.12.11            
-## [41] munsell_0.4.3            stringi_1.1.5           
-## [43] yaml_2.1.14              zlibbioc_1.22.0         
-## [45] plyr_1.8.4               grid_3.4.0              
-## [47] crayon_1.3.2             lattice_0.20-35         
-## [49] Biostrings_2.44.1        splines_3.4.0           
-## [51] annotate_1.54.0          hms_0.3                 
-## [53] locfit_1.5-9.1           geneplotter_1.54.0      
-## [55] codetools_0.2-15         biomaRt_2.32.1          
-## [57] XML_3.98-1.7             evaluate_0.10           
-## [59] latticeExtra_0.6-28      data.table_1.10.4       
-## [61] gtable_0.2.0             assertthat_0.2.0        
-## [63] xtable_1.8-2             survival_2.41-3         
-## [65] tibble_1.3.3             GenomicAlignments_1.12.1
-## [67] memoise_1.1.0            cluster_2.0.6
+##  [1] bit64_0.9-7             splines_3.5.0          
+##  [3] assertthat_0.2.0        Formula_1.2-2          
+##  [5] latticeExtra_0.6-28     blob_1.1.0             
+##  [7] GenomeInfoDbData_0.99.1 yaml_2.1.14            
+##  [9] RSQLite_2.0             backports_1.1.1        
+## [11] lattice_0.20-35         glue_1.1.1             
+## [13] digest_0.6.12           RColorBrewer_1.1-2     
+## [15] XVector_0.17.1          checkmate_1.8.4        
+## [17] colorspace_1.3-2        htmltools_0.3.6        
+## [19] Matrix_1.2-11           plyr_1.8.4             
+## [21] pkgconfig_2.0.1         XML_3.98-1.9           
+## [23] genefilter_1.59.0       zlibbioc_1.23.0        
+## [25] xtable_1.8-2            scales_0.5.0           
+## [27] BiocParallel_1.11.11    htmlTable_1.9          
+## [29] tibble_1.3.4            annotate_1.55.0        
+## [31] withr_2.0.0             nnet_7.3-12            
+## [33] lazyeval_0.2.0          survival_2.41-3        
+## [35] crayon_1.3.4            memoise_1.1.0          
+## [37] evaluate_0.10.1         foreign_0.8-69         
+## [39] tools_3.5.0             data.table_1.10.4-2    
+## [41] hms_0.3                 stringr_1.2.0          
+## [43] locfit_1.5-9.1          munsell_0.4.3          
+## [45] cluster_2.0.6           compiler_3.5.0         
+## [47] rlang_0.1.2             grid_3.5.0             
+## [49] RCurl_1.95-4.8          htmlwidgets_0.9        
+## [51] labeling_0.3            bitops_1.0-6           
+## [53] base64enc_0.1-3         codetools_0.2-15       
+## [55] gtable_0.2.0            DBI_0.7                
+## [57] R6_2.2.2                gridExtra_2.3          
+## [59] bit_1.1-12              bindr_0.1              
+## [61] Hmisc_4.0-3             rprojroot_1.2          
+## [63] stringi_1.1.5           Rcpp_0.12.13           
+## [65] geneplotter_1.55.0      rpart_4.1-11           
+## [67] acepack_1.4.1
 ```

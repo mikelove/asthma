@@ -27,7 +27,8 @@ list.files("../data/quant/")
 The layout of a single sample's quantification directory
 
 ```{r}
-list.files("../data/quant/SRR1565926")
+library(here)
+list.files(here("data","quant","SRR1565926"))
 ```
 
 We will read in a table we created from the SRA website, which
@@ -37,7 +38,7 @@ we will be assembling.
 
 ```{r}
 library(readr)
-coldata <- read_delim("../data/SraRunTable.txt", delim="\t")
+coldata <- read_delim(here("data","SraRunTable.txt"), delim="\t")
 coldata
 ```
 
@@ -46,7 +47,7 @@ so we can build a vector which points to our quantification files using
 this column of `coldata`. We use `names` to name this vector with the run IDs as well.
 
 ```{r}
-files <- file.path("../data/quant",coldata$Run_s,"quant.sf.gz")
+files <- file.path(here("data","quant",coldata$Run_s,"quant.sf.gz"))
 names(files) <- coldata$Run_s
 head(files,2)
 ```
@@ -74,7 +75,7 @@ tx2gene <- res[,2:1]
 We have prepared this table in advance, and now load it:
 	
 ```{r}
-load("../data/tx2gene.rda")
+load(here("data","tx2gene.rda"))
 head(tx2gene)
 ```
 
@@ -130,11 +131,23 @@ We can therefore bring in the sample names from GEO, line them up with
 our coldata, and extract the subject ID information:
 
 ```{r}
-geo <- read_delim("../data/GEO_table.txt", delim="\t", col_names=FALSE)
+geo <- read_delim(here("data","GEO_table.txt"),
+                  delim="\t", col_names=FALSE)
 head(geo)
 coldata$title <- geo$X2[match(coldata$Sample_Name_s, geo$X1)]
 coldata$condition <- factor(coldata$disease_state_s)
 coldata$treatment <- factor(coldata$treatment_s)
+```
+
+I like to rename the *levels* of the variables used for modeling such
+that they are easier to work with, by shortening them.
+
+```{r}
+# you can rename levels, but need to use same order as current levels()
+levels(coldata$condition)
+levels(coldata$condition) <- c("asth","non")
+levels(coldata$condition)
+coldata$condition
 ```
 
 Now, we will build a `DESeqDataSet` from the matrices in `txi`, 
@@ -168,18 +181,7 @@ dds <- DESeqDataSetFromTximport(txi, coldata,
 dds
 ```
 
-I like to rename the *levels* of the variables in the design so they are
-easier to work with, by shortening them.
-
-```{r}
-# you can rename levels, but need to use same order as current levels()
-levels(dds$condition)
-levels(dds$condition) <- c("asth","non")
-levels(dds$condition)
-dds$condition
-```
-
-It's also important to set the *reference level* in a sensible way,
+It's important to set the *reference level* in a sensible way,
 so comparisons are of treated over control for instance. In this 
 case the reference levels should be the non-asthmatic individuals and the
 Vehicle treatment.
@@ -532,14 +534,17 @@ The `.05` and `2.06` come from the coefficients for the red line,
 and the `.28` comes from determining how far the true dispersion values
 are spread around the red line. It's less than the black points,
 as the spread of the black points represents dispersion differences 
-across genes *and* sampling variance.
+across genes *and* sampling variance. Because the `.28` is the
+variance of the spread, we need to take the square root to make it on
+the scale of standard deviation (thanks Bernd Klaus for catching this).
 
 The `.05` *asymptotic dispersion* means that the counts
 vary by about 22% of their expected value, when the counts are high.
 
 ```{r}
 dispersionFunction(dds)
-dmr <- function(x) (.05 + 2.06 / x) * exp(rnorm(length(x),0,.28))
+dmr <- function(x) (.05 + 2.06 / x) *
+                     exp(rnorm(n=length(x),mean=0,sd=sqrt(.28)))
 ```
 
 This is what our `dmr` function returns, when we
@@ -612,7 +617,7 @@ group, in order to classify the genes into bins.
 ```{r}
 max.lfc <- ceiling(max(abs(mcols(sim)$trueBeta)))
 sim.dat <- data.frame(sig=sim.res$padj < .1,
-                      mean=cut(2^mcols(sim)$trueIntercept,c(0,10,100,1000,1e5)),
+                      mean=cut(2^mcols(sim)$trueIntercept,c(0,10,50,100,1e5)),
                       abs.LFC=cut(abs(mcols(sim)$trueBeta),c(0,.25,.5,1,max.lfc)))
 ```
 
@@ -628,7 +633,7 @@ sim.tab <- sim.dat %>% group_by(mean, abs.LFC) %>% summarize(power=mean(sig))
 Plotting these power curves, we can see that the power is low for genes 
 with small absolute LFC and genes with small mean count. To achieve
 75% power for detection, the log2 fold change for a gene with mean count
-in the range 10-100 needs to be greater than 1.
+in the range 50-100 needs to be greater than 1.
 
 ```{r power, fig.width=7, fig.height=4}
 ggplot(sim.tab, aes(x=abs.LFC, y=power, col=mean, group=mean)) + geom_line()

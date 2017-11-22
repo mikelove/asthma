@@ -14,12 +14,12 @@ output:
 # Importing Salmon quant files
 
 We begin this workflow by importing Salmon quantifications which are 
-included in this repository under `data/quant`. Relative to the `scripts` 
+included in this repository under `data/quants`. Relative to the `scripts` 
 directory, we can see we have quantifications for 24 samples:
 
 
 ```r
-list.files("../data/quant/")
+list.files("../data/quants/")
 ```
 
 ```
@@ -35,7 +35,7 @@ The layout of a single sample's quantification directory
 
 ```r
 library(here)
-list.files(here("data","quant","SRR1565926"))
+list.files(here("data","quants","SRR1565926"))
 ```
 
 ```
@@ -107,16 +107,16 @@ this column of `coldata`. We use `names` to name this vector with the run IDs as
 
 
 ```r
-files <- file.path(here("data","quant",coldata$Run_s,"quant.sf.gz"))
+files <- file.path(here("data","quants",coldata$Run_s,"quant.sf.gz"))
 names(files) <- coldata$Run_s
 head(files,2)
 ```
 
 ```
 ##                                                 SRR1565926 
-## "/home/love/proj/asthma/data/quant/SRR1565926/quant.sf.gz" 
+## "/home/love/proj/asthma/data/quants/SRR1565926/quant.sf.gz" 
 ##                                                 SRR1565927 
-## "/home/love/proj/asthma/data/quant/SRR1565927/quant.sf.gz"
+## "/home/love/proj/asthma/data/quants/SRR1565927/quant.sf.gz"
 ```
 
 The following code (not evaluated here) can be used to generate a table

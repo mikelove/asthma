@@ -4,5 +4,5 @@
 # quantifying
 ./Salmon-0.8.2_linux_x86_64/bin/salmon quant -i gencode.v26.Salmon-0.8.2_index \
   -l IU -1 fastq/SRR1565926_1.fastq.gz -2 fastq/SRR1565926_2.fastq.gz \
-  -o quant/SRR1565926
+  -o quants/SRR1565926
   
